@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-FileCopy">
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters" if="AuxiliaryTools.FileCopier.properties">
+		<groovy>
+		<![CDATA[
+			import com.epam.performance.utils.trier.Args;
+			import com.epam.performance.apt.RemoteToLocal;
+			import com.epam.performance.apt.jsch.GetFilesImpl;
+			import com.epam.performance.ssh.SSHHost;
+			import com.epam.performance.utils.ExecutorPool;
+			import java.io.File;
+			import java.util.concurrent.Executors;
+
+			Integer parseOrDefault(String stringValue, Integer defaultValue) {
+				try {
+					defaultValue = new Integer(stringValue);
+				} catch (NumberFormatException nfe) {
+				}
+				return defaultValue;
+			}
+
+			ExecutorPool ep = new ExecutorPool(Executors.newFixedThreadPool(Math.max(Runtime.getRuntime().availableProcessors() - 1, 1))); // Num cores - 1 or 1
+			final String prefix = "AuxiliaryTools.FileCopier.";
+			// Config loading
+			Integer threadsPerHost = parseOrDefault(project.getProperty(prefix + "ThreadsPerHost"), 2);
+			Integer retryCount = parseOrDefault(project.getProperty(prefix + "RetryCount"), 3);
+			Integer reAttemptDelayMS = parseOrDefault(project.getProperty(prefix + "ReAttemptDelayMS"), 15000);
+			String[] hosts = project.getProperty(prefix + "Hosts").split(",");
+			for (String host:hosts) {
+				final String hostPrefix = prefix + "Host." + host;
+				final String ssh_hostname = project.getProperty(hostPrefix + ".HostName");
+				final Integer ssh_port = parseOrDefault(project.getProperty(hostPrefix + ".Port"), 22);
+				final String ssh_username = project.getProperty(hostPrefix + ".UserName");
+				final String ssh_privateKey = project.getProperty(hostPrefix + ".PrivateKey");
+				final String ssh_keyPassphrase = project.getProperty(hostPrefix + ".KeyPassphrase");
+				final SSHHost sshHost = new SSHHost() {
+					{
+						setHostname(ssh_hostname);
+						setSSHPort(ssh_port);
+						setUsername(ssh_username);
+						setKeyFilename(ssh_privateKey);
+						setKeyPassphrase(ssh_keyPassphrase);
+					}
+				};
+				Args<RemoteToLocal> args = new Args<RemoteToLocal>() {
+					@Override
+					public String getName() {
+						return sshHost.getHostname();
+					}
+				};
+				String[] groups = project.getProperty(hostPrefix + ".Groups").split(",");
+				for (String group:groups) {
+					String groupPrefix = hostPrefix + ".Group." + group;
+					String[] paths = project.getProperty(groupPrefix + ".Files").split(",");
+					for (String path:paths) {
+						RemoteToLocal file = new RemoteToLocal();
+						file.setRemoteHost(sshHost);
+						file.setFrom(path);
+						file.setTo(project.getProperty(groupPrefix + ".Destination"));
+						args.getList().add(file);
+					}
+				}
+				ep.add(new GetFilesImpl(threadsPerHost, retryCount, reAttemptDelayMS, args));
+			}
+			ep.run();
+		]]>
+		</groovy>
+	</target>
+	<target name="-LoadParameters" if="AuxiliaryTools.FileCopier.properties">
+		<property file="${AuxiliaryTools.FileCopier.properties}" />
+	</target>
+</project>

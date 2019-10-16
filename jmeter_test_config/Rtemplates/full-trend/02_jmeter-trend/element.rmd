@@ -1,0 +1,99 @@
+
+<span id='`r to_id(ifelse(current_name == "Total", current_group, current_name))`' />
+
+`r builder$heading(1)` `r ifelse(current_name == "Total", "Group Summary", paste0("'", current_name, "' Transaction"))`
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+data_elapsed <- do.call(history_obj$get_table, as.list(current_data$path))
+data_latency <- do.call(history_obj$get_table, as.list(current_data$lt))
+data_bytes <- do.call(history_obj$get_table, as.list(current_data$bytes))
+data_slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+
+.xname <- if (current_group == "Total") {
+    "Grand Total"
+} else {
+    sprintf("%s (%s)", current_name, current_group)
+}
+
+# Response Time Summary
+builder$include("jmeter/tables/trend_summary", arguments = list(
+    table_data = data_elapsed,
+    table_slas = data_slares,
+    table_metric_descr = jmeter_schema$elapsed,
+    table_bgroup = current_group
+))
+
+# Average, 90 % Response Time Deltas Table
+for (pack in list(list("avg", "Average RT"), list("p90", "90 % RT"))) {
+    builder$include("trend/tables/trend_deltas", arguments = list(
+        table_history = history_obj,
+        table_path = current_data$path,
+        table_metric = pack[[1]],
+        table_metric_hr = pack[[2]],
+        table_slas = data_slares,
+        table_bgroup = current_group,
+        table_type = "elapsed",
+        table_units = "s"
+    ))
+}
+
+# Latency Time Summary
+if (!is.null(data_latency)) {
+    builder$include("jmeter/tables/trend_summary", arguments = list(
+        table_data = data_latency,
+        table_slas = data_slares,
+        table_metric_descr = jmeter_schema$latency,
+        table_bgroup = current_group
+    ))
+}
+
+# Throughput Summary
+if (!is.null(data_bytes)) {
+    builder$include("jmeter/tables/trend_summary", arguments = list(
+        table_data = data_bytes,
+        table_slas = data_slares,
+        table_metric_descr = jmeter_schema$bytes,
+        table_bgroup = current_group
+    ))
+}
+
+# SLA status Table
+builder$include("trend/tables/sla_summary", arguments = list(
+    table_sla = data_slares,
+    table_verdicts = history_obj$get_verdicts_table()[test.id %in% data_elapsed$test.id]
+))
+
+d <- list(
+    list(data_elapsed, jmeter_schema$elapsed), 
+    list(data_latency, jmeter_schema$latency),
+    list(data_bytes, jmeter_schema$bytes)
+)
+
+for (type in d) {
+    if (!is.null(type[[1]])) {
+        builder$include("trend/charts/basic", arguments = list(
+            chart_data = type[[1]],
+            chart_series = list(
+                "avg" = "Average", 
+                "median" = "50 %",
+                "p90" = "90 %"
+            ),
+            chart_heading = capitalize(type[[2]]$name_full),
+            chart_name = paste(.xname, type[[2]]$name_full, "time", sep = " "),
+            chart_unit = type[[2]]$units
+        ))
+    }
+}
+
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_elapsed,
+    chart_series = list(
+        "passed" = "Passed",
+        "failed" = "Failed",
+        "total" = "Total"
+    ),
+    chart_heading = "Transaction Statuses",
+    chart_name = paste0(.xname, " statuses"),
+    chart_unit = "Count"
+))
+```

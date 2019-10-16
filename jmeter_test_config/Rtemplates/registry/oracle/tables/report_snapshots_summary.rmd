@@ -1,0 +1,25 @@
+`r builder$heading(1)` Snapshots summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+#' Fragment that describes Oracle snapshots description table for regular report.
+#'
+#' @param table_data Oracle metadata for table creation.
+#' @param table_slas SLA results storage object.
+#' @param table_history historical data storage object.
+
+builder$include("oracle/tables/generic_snapshots_summary", arguments = list(
+    summary_data = table_data,
+    summary_slas = table_slas,
+    summary_plugins = list(
+        history = list(
+            ptable_history_obj = table_history,
+            ptable_history_loc = c("Summary", "Oracle", "Snapshots"),
+            ptable_history_excludes = "test.begin"
+        )
+    ),
+    summary_transpose = TRUE,
+    summary_orderby = "test.begin",
+    summary_orderby_desc = FALSE
+))
+```

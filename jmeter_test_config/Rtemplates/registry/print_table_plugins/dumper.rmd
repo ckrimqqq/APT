@@ -1,0 +1,13 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Plugin that can dump any given table to a CSV file.
+#'
+#' Uses the following variables (params are not listed):
+#' @param ptable table to dump.
+#' @param ptable_dumper_where path where table should be saved.
+#' @param ptable_dumper_append enable append mode when saving table as CSV.
+
+if (!is.null(ptable_dumper_where)) {
+    dump_2_csv(ptable_dumper_where, list(ptable), append = ptable_dumper_append)
+}
+```

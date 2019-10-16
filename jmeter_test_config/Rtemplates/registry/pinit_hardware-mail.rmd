@@ -1,0 +1,31 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# Hardware plugin initializer script for mail report (for historical data).
+#
+# It assumes that historical data has been already read and reuses it to
+# provide custom AbstractReportSource implementation for handler.
+#
+# Associated handler specifies get_summary method only, so groups and elements
+# will be ignored even if event files are provided.
+
+builder$inject_vars("history_obj", is_file = FALSE)
+
+setRefClass(
+    Class = "HardwareMailSource",
+    fields = list(
+        d = "character",
+        alias = "character"
+    ),
+    methods = list(
+        get_summary = function() reportResTuple(d, alias)
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj) && history_obj$is_active("Hardware")) {
+    builder$register_plugin_handler(
+        "hardware-mail",
+        new("HardwareMailSource", d = "Hardware", alias = "Hardware")
+    )
+}
+```

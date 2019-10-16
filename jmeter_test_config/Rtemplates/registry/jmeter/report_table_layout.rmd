@@ -1,0 +1,40 @@
+```{r echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Report fragment that describes grouped tables layout.
+#' Grouped tables are tables that can be build per
+#' all transactions as single one, group or each transaction.
+#' 
+#' Uses the following variables (params are not listed):
+#' @param tlayout_type name of table template to apply (actual template path
+#' will be jmeter/tables/${tlayout_type}.rmd).
+#' @param tlayout_data data for tables.
+#' @param tlayout_slares SLA results storage object.
+#' @param tlayout_history historical data storage object.
+#' @param tlayout_metric_descr table metric description object (part of jmeter schema).
+#' @param tlayout_args list (with 3 elements) of additional arguments 
+#' per each table (passed as list) or NULL. Essentially is a list of lists.
+
+tlayout_template <- paste0("jmeter/tables/", tlayout_type)
+tlayout_pname <- sub("group_", "", tlayout_type)
+```
+
+`r builder$heading(1)` `r capitalize(tlayout_metric_descr$name_full)` `r tlayout_pname`
+
+Calculation is based on transactions with '`r ifelse(param_stat_success, "passed", "any")`' status
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+modes <- c("total", "group", "transaction")
+
+for (i in seq(1, 3)) {
+    builder$include(tlayout_template, arguments = c(
+        list(
+            table_data = tlayout_data,
+            table_slas = tlayout_slares,
+            table_history = tlayout_history,
+            table_metric_descr = tlayout_metric_descr,
+            table_mode = modes[i]
+        ),
+        tlayout_args[[i]]
+    ))
+}
+```

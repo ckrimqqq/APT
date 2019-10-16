@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-oracle" xmlns:if="ant:if" xmlns:unless="ant:unless">
+	<target name="-setup" extensionOf="-Monitors-setup" depends="-LoadParameters,-initTracking" if="Hardware.Metrics.Oracle.properties">
+		<groovy>
+		<![CDATA[
+			String dbstatOutputData = project.getProperty("basedir") + "/db.data";
+			String dbstatOutputMeta = project.getProperty("basedir") + "/dbmeta.data";
+			String awrOutputFile = project.getProperty("basedir") + "/awr.html";
+			project.setProperty("Monitors.Oracle.Output.Data", dbstatOutputData);
+			project.setProperty("Monitors.Oracle.Output.Meta", dbstatOutputMeta);
+			project.setProperty("Monitors.Oracle.Output.AWR", awrOutputFile);
+			for (def cfile : [awrOutputFile, dbstatOutputData, dbstatOutputMeta]) {
+				ant.delete(
+					file : cfile,
+					quiet : true
+				);
+			}
+		]]>
+		</groovy>
+		<echo message="id,min_cost,fetch,exec,cpu,elapsed,iowait,reads,text${line.separator}" file="${Monitors.Oracle.Output.Data}" />
+		<echo message="snap_beg,snap_end,beg,end${line.separator}" file="${Monitors.Oracle.Output.Meta}" />
+	</target>
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters,-stopTracking,-getAWR" if="Hardware.Metrics.Oracle.properties">
+		<sql driver="${Hardware.Metrics.Oracle.JDBC.Driver}" classpathref="classpath.ref" url="${Hardware.Metrics.Oracle.JDBC.URL}"
+			 userid="${Hardware.Metrics.Oracle.JDBC.UserName}" password="${Hardware.Metrics.Oracle.JDBC.Password}"
+			 output="${Monitors.Oracle.Output.Data}" showheaders="false" showtrailers="false" print="true" append="true" onerror="continue">
+			<![CDATA[
+				select SQL_ID,
+					   min(OPTIMIZER_COST) as OPTIMIZER_COST,
+					   sum(FETCHES_DELTA) as FETCHES_DELTA,
+					   sum(EXECUTIONS_DELTA) as EXECUTIONS_DELTA,
+					   sum(CPU_TIME_DELTA) as CPU_TIME_DELTA,
+					   sum(ELAPSED_TIME_DELTA) as ELAPSED_TIME_DELTA,
+					   sum(IOWAIT_DELTA) as IOWAIT_DELTA,
+					   sum(DISK_READS_DELTA) as DISK_READS_DELTA,
+					   replace(replace(utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(dbms_lob.substr(SQL_TEXT,${Hardware.Metrics.Oracle.JDBC.SqlTextMaxLen},1)))),chr(10)),chr(13)) as SQL_TEXT
+				from (
+					select SQL_ID, OPTIMIZER_COST, FETCHES_DELTA, EXECUTIONS_DELTA, CPU_TIME_DELTA, ELAPSED_TIME_DELTA, IOWAIT_DELTA, DISK_READS_DELTA
+					from DBA_HIST_SQLSTAT where SNAP_ID > ${Hardware.Metrics.Oracle.snapshot.start} and SNAP_ID <= ${Hardware.Metrics.Oracle.snapshot.end}
+				) inner join DBA_HIST_SQLTEXT using (SQL_ID)
+				group by SQL_ID, replace(replace(utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(dbms_lob.substr(SQL_TEXT,${Hardware.Metrics.Oracle.JDBC.SqlTextMaxLen},1)))),chr(10)),chr(13));
+			]]>
+		</sql>
+		<sql driver="${Hardware.Metrics.Oracle.JDBC.Driver}" classpathref="classpath.ref" url="${Hardware.Metrics.Oracle.JDBC.URL}"
+			 userid="${Hardware.Metrics.Oracle.JDBC.UserName}" password="${Hardware.Metrics.Oracle.JDBC.Password}"
+			 output="${Monitors.Oracle.Output.Meta}" showheaders="false" showtrailers="false" print="true" append="true" onerror="continue">
+			<![CDATA[
+				select min(SNAP_ID) as SNAP_ID_BEGIN, 
+					   max(SNAP_ID) as SNAP_ID_END,
+					   round((cast(min(BEGIN_INTERVAL_TIME) as date) - TO_DATE('1970-01-01', 'YYYY-MM-DD')) * 86400) as STAT_BEGIN,
+					   round((cast(max(END_INTERVAL_TIME) as date) - TO_DATE('1970-01-01', 'YYYY-MM-DD')) * 86400) as STAT_END
+				from(
+					select *
+					from DBA_HIST_SNAPSHOT 
+					where SNAP_ID > ${Hardware.Metrics.Oracle.snapshot.start} and SNAP_ID <= ${Hardware.Metrics.Oracle.snapshot.end}
+				);
+			]]>
+		</sql>
+	</target>
+	<target name="-LoadParameters" if="Hardware.Metrics.Oracle.properties">
+		<tempfile property="Hardware.Metrics.Oracle.TempFile" suffix=".property" deleteonexit="true" />
+		<property file="${Hardware.Metrics.Oracle.properties}" />
+		<condition property="Hardware.Metrics.Oracle.startDefined">
+			<isset property="Hardware.Metrics.Oracle.snapshot.start"/>
+		</condition>
+		<condition property="Hardware.Metrics.Oracle.endDefined">
+			<isset property="Hardware.Metrics.Oracle.snapshot.end"/>
+		</condition>
+		<condition property="Hardware.Metrics.Oracle.awrDefined">
+			<isset property="Hardware.Metrics.Oracle.AWR"/>
+		</condition>
+	</target>
+	<target name="-initTracking" if="Hardware.Metrics.Oracle.properties" unless="Hardware.Metrics.Oracle.startDefined">
+		<sql driver="${Hardware.Metrics.Oracle.JDBC.Driver}" classpathref="classpath.ref" url="${Hardware.Metrics.Oracle.JDBC.URL}"
+			 userid="${Hardware.Metrics.Oracle.JDBC.UserName}" password="${Hardware.Metrics.Oracle.JDBC.Password}"
+			 output="${Hardware.Metrics.Oracle.TempFile}" showheaders="false" showtrailers="false" print="true" append="true" onerror="continue">
+			<![CDATA[
+				select 'Hardware.Metrics.Oracle.snapshot.start=' || dbms_workload_repository.create_snapshot() from dual;
+			]]>
+		</sql>
+		<property file="${Hardware.Metrics.Oracle.TempFile}" />
+	</target>
+	<target name="-stopTracking" if="Hardware.Metrics.Oracle.properties" unless="Hardware.Metrics.Oracle.endDefined">
+		<sql driver="${Hardware.Metrics.Oracle.JDBC.Driver}" classpathref="classpath.ref" url="${Hardware.Metrics.Oracle.JDBC.URL}"
+			 userid="${Hardware.Metrics.Oracle.JDBC.UserName}" password="${Hardware.Metrics.Oracle.JDBC.Password}"
+			 output="${Hardware.Metrics.Oracle.TempFile}" showheaders="false" showtrailers="false" print="true" append="true" onerror="continue">
+			<![CDATA[
+				select 'Hardware.Metrics.Oracle.snapshot.end=' || dbms_workload_repository.create_snapshot() from dual;
+			]]>
+		</sql>
+		<property file="${Hardware.Metrics.Oracle.TempFile}" />
+	</target>
+	<target name="-getAWR" depends="-LoadParameters" if="Hardware.Metrics.Oracle.awrDefined">
+		<sql driver="${Hardware.Metrics.Oracle.JDBC.Driver}" classpathref="classpath.ref" url="${Hardware.Metrics.Oracle.JDBC.URL}"
+			 userid="${Hardware.Metrics.Oracle.JDBC.UserName}" password="${Hardware.Metrics.Oracle.JDBC.Password}"
+			 output="${Monitors.Oracle.Output.AWR}" showheaders="false" showtrailers="false" print="true" append="true" onerror="continue">
+			<![CDATA[
+				select output from table (dbms_workload_repository.awr_report_html(${Hardware.Metrics.Oracle.JDBC.DBID},1,${Hardware.Metrics.Oracle.snapshot.start},${Hardware.Metrics.Oracle.snapshot.end}));
+			]]>
+		</sql>
+	</target>
+</project>

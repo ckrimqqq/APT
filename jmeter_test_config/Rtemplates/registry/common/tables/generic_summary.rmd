@@ -1,0 +1,55 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter summary table.
+#'
+#' It is designed to be used either for trend or for report
+#' tables creation. It's also supposed to be used in embedded 
+#' mode, so no header is present.
+#' 
+#' @param summary_table data for table.
+#' @param summary_class character name of table SLA class.
+#' @param summary_bgroup either a list of actual values, or character name 
+#' of bgroup column, or NULL.
+#' @param summary_orderby character name of table column for row ordering.
+#' @param summary_orderby_desc logical flag specifying direction of sorting.
+#' @param summary_subclass character name of table SLA subclass.
+#' @param summary_slas SLA results storage.
+#' @param summary_plugins list of plugins with settings.
+#' @param summary_suppress names of columns to disable in table.
+#' @param summary_unit name of measurement unit for data.
+
+summary_columns <- list(
+    test.id = "Test ID",
+    name = "Label",
+    group = "Group",
+    min = paste0("Min, ", summary_unit),
+    avg = paste0("Avg, ", summary_unit),
+    max = paste0("Max, ", summary_unit),
+    std = paste0("Std.dev., ", summary_unit),
+    se = paste0("Std.err., ", summary_unit),
+    median = paste0("Median, ", summary_unit),
+    p90 = paste0("90 %, ", summary_unit),
+    total = "Total",
+    passed = "Passed",
+    failed = "Failed",
+    errate = "Error rate"
+)
+
+summary_columns[summary_suppress] <- NA
+
+builder$include("print_table", arguments = list(
+    ptable = summary_table,
+    ptable_sla_class = summary_class,
+    ptable_sla_subclass = summary_subclass,
+    ptable_bgroup_col = summary_bgroup,
+    ptable_html_args = list(
+        sortable = TRUE,
+        order_by = summary_orderby,
+        order_desc = summary_orderby_desc,
+        col_names = summary_columns,
+        linkify_cols = "name" # no such columns for trend
+    ),
+    ptable_slares = summary_slas,
+    ptable_plugins = summary_plugins
+))
+```

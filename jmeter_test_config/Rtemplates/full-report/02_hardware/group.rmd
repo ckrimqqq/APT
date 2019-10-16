@@ -1,0 +1,17 @@
+`r builder$heading(1)` '`r current_name`' Metric Group
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("hardware/tables/report_summary", arguments = list(
+    table_data = current_data,
+    table_name = current_name,
+    table_history = history_obj,
+    table_slas = slares
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("hardware/charts/report_summary", arguments = list(
+    chart_data = current_data,
+    chart_name = current_name
+))
+```

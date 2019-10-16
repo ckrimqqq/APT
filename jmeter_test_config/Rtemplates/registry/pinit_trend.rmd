@@ -1,0 +1,14 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# Initializer script for trend report (for historical data).
+#
+# It shares actual implementation with mail report initializer, the only 
+# diffrence is HTML resources.
+
+deps$add_scripts("resources/js/sorter.js")
+deps$add_styles("resources/css/report.css")
+
+builder$include("init_trend_core", arguments = list(
+    init_plugin_name = "trend"
+), nested_env = FALSE)
+```

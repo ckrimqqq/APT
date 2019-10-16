@@ -1,0 +1,10 @@
+
+`r builder$heading(1)` General
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Test description table (add include=FALSE in header above to disable)
+builder$include("trend/tables/test_verdicts", arguments = list(
+  verdicts_obj = current_data,
+  verdicts_slas = slares
+))
+```

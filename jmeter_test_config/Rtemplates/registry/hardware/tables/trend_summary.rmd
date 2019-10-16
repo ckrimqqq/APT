@@ -1,0 +1,25 @@
+
+`r builder$heading(1)` Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+
+#' Fragment that describes hardware group summary table.
+#'
+#' @param table_data data for table.
+#' @param table_group name of hardware group.
+#' @param table_metric name of hardware metric.
+#' @param table_slas SLA results storage object.
+
+builder$include("common/tables/generic_summary", arguments = list(
+    summary_table = table_data,
+    summary_class = paste0("hardware.", table_group),
+    summary_subclass = NULL,
+    summary_bgroup = NULL,
+    summary_slas = table_slas,
+    summary_plugins = NULL,
+    summary_suppress = c("group", "passed", "failed", "errate"),
+    summary_orderby = "test.id",
+    summary_orderby_desc = FALSE,
+    summary_unit = "units"
+))
+```

@@ -1,0 +1,49 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# HTTP Codes plugin initializer script for trend report (for historical data).
+#
+# It assumes that historical data has been already read and reuses it to
+# provide custom AbstractReportSource implementation for handler.
+
+builder$inject_vars("history_obj", is_file = FALSE)
+
+setRefClass(
+    Class = "HTTPCodesTrendSource",
+    fields = list(
+        ho = "HistoryData",
+        d = "character",
+        alias = "character"
+    ),
+    methods = list(
+        initialize = function(hist_object = NULL, pd = NULL, palias = "") {
+            if (!is.null(hist_object)) {
+                ho <<- hist_object
+            }
+            if (is.null(pd)) {
+                d <<- c("Codes", "All")
+            } else {
+                d <<- pd
+            }
+            alias <<- palias
+        },
+        get_summary = function() reportResTuple(NULL, alias),
+        get_groups = function() sort(ho$get_names(d)),
+        get_group = function(groupname) {
+            new(
+                "HTTPCodesTrendSource", 
+                pd = c(d, groupname),
+                hist_object = ho,
+                palias = groupname
+            )
+        }
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj) && history_obj$is_active(c("Codes", "All"))) {
+    builder$register_plugin_handler(
+        "httpcodes-trend",
+        new("HTTPCodesTrendSource", hist_object = history_obj, palias = "HTTP Codes")
+    )
+}
+```

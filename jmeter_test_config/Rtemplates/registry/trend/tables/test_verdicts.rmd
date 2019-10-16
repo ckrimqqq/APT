@@ -1,0 +1,23 @@
+
+`r builder$heading(1)` Test Verdicts
+
+```{r table-slas, results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("print_table", arguments = list(
+  ptable = verdicts_obj,
+  ptable_sla_class = "trend.status",
+  ptable_sla_subclass = NULL,
+  ptable_bgroup_col = NULL,
+  ptable_html_args = list(
+    sortable = TRUE,
+    order_by = "test.id",
+    order_desc = FALSE,
+    col_names = list(
+      test.id = "Test ID",
+      status = "Test SLA status"
+    ),
+    linkify_cols = NULL
+  ),
+  ptable_slares = verdicts_slas,
+  ptable_plugins = NULL
+))
+```

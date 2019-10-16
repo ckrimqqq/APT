@@ -1,0 +1,20 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Plugin that can add any table to the historical data.
+#'
+#' Uses the following variables (params are not listed):
+#' @param ptable table to add.
+#' @param ptable_history_obj historical data object to use. 
+#' @param ptable_history_loc 3-el. character vector with historical data location of current table.
+#' @param ptable_history_excludes column names that shouldn't be included into historical data.
+
+if (is.character(ptable_history_loc) && length(ptable_history_loc) == 3) {
+    ptable_history_obj$add_table(
+        d = ptable,
+        category = ptable_history_loc[1],
+        group_field = ptable_history_loc[2],
+        name_field = ptable_history_loc[3],
+        exclude_cols = ptable_history_excludes
+    )
+}
+```

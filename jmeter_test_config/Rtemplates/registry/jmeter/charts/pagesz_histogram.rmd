@@ -1,0 +1,32 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter page size histogram.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+#' @param chart_prefix chart title prefix (chart specific data will be appended).
+#' @param chart_by metric for data grouping (1 line on plot for each group).
+
+chart_layers <- chart(
+    chart_data,
+    chart_histogram,
+    list(
+        list(
+            key = chart_by,
+            metric = "bytes"
+        )
+    ),
+    chartops = c(
+        list(
+            gtitle = paste0(
+                chart_prefix,
+                " page size histogram"
+            ),
+            gxlab = "KBs",
+            gylab = "Count"
+        ),
+        param_charts_common
+    ),
+    x_bins = param_bar_bins
+)
+```

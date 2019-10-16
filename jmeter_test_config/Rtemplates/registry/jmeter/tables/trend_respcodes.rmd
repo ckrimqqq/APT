@@ -1,0 +1,19 @@
+`r builder$heading(1)` Summary
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter response codes summary table for trend report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_schema_descr jmeter schema object.
+
+builder$include("jmeter/tables/generic_respcodes", arguments = list(
+    respcodes_data = table_data,
+    respcodes_slas = table_slas,
+    respcodes_plugins = NULL,
+    respcodes_orderby = "test.id",
+    respcodes_orderby_desc = FALSE,
+    respcodes_schema_descr = table_schema_descr
+))
+```

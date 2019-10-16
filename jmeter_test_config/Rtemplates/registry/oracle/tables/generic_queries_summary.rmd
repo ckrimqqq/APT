@@ -1,0 +1,43 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+#' Oracle plugin helper table printer fragment.
+#'
+#' Uses the following variables (params are not listed):
+#' @param summary_data oracle data for target table.
+#' @param summary_metric column name for which table should be build.
+#' @param summary_plugins table printer plugin settings list.
+#' @param summary_slares sla results storage.
+
+.col_names <- list(
+    test.id = "Test ID",
+    id = "SQL Id",
+    min_cost = "Opt. cost",
+    elapsed = "Elapsed time, s",
+    exec = "Executions",
+    cpu = "CPU time, s",
+    io = "IO wait time, s",
+    reads = "Physical reads",
+    fetch = "Fetches",
+    elapsed_per_exec = "Elapsed per exec., s",
+    cpu_per_exec = "CPU per exec., s",
+    io_per_exec = "IO per exec., s",
+    reads_per_exec = "Reads per exec.",
+    perc_cpu = "%CPU",
+    perc_io = "%IO"
+)
+
+builder$include("print_table", arguments = list(
+    ptable = summary_data,
+    ptable_sla_class = "oracle.queries",
+    ptable_sla_subclass = summary_metric,
+    ptable_bgroup_col = NULL,
+    ptable_html_args = list(
+        transpose = FALSE,
+        sortable = TRUE,
+        col_names = .col_names,
+        linkify_cols = "id"
+    ),
+    ptable_slares = summary_slares,
+    ptable_plugins = summary_plugins
+))
+```

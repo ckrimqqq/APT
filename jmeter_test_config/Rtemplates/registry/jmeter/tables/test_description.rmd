@@ -1,0 +1,33 @@
+`r builder$heading(1)` Test description
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter test description table for regular report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_history historical data storage object.
+#' @param table_schema jmeter schema object.
+
+builder$include("jmeter/tables/generic_description", arguments = list(
+    description_data = summary_general(
+        table_data,
+        tzone = param_timezone, 
+        vcs.url = Sys.getenv(param_env_vcs_url), 
+        vcs.rev = Sys.getenv(param_env_vcs_rev)
+    ),
+    description_slas = table_slas,
+    description_transpose = TRUE,
+    description_sort = FALSE,
+    description_plugins = list(
+        history = list(
+            ptable_history_obj = table_history,
+            ptable_history_loc = c("Summary", "JMeter", "Test"),
+            ptable_history_excludes = "begin"
+        )
+    ),
+    description_orderby = "begin",
+    description_orderby_desc = FALSE,
+    description_schema = table_schema
+))
+```

@@ -1,0 +1,35 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+#' Fragment that describes Oracle generic snapshots description table.
+#'
+#' @param summary_data Oracle metadata for table creation.
+#' @param summary_slas SLA results storage object.
+#' @param summary_plugins list of table printer plugins.
+#' @param summary_transpose transpose table?
+#' @param summary_orderby
+#' @param summary_orderby_desc
+
+builder$include("print_table", arguments = list(
+    ptable = summary_data,
+    ptable_sla_class = "oracle.summary",
+    ptable_sla_subclass = NULL,
+    ptable_bgroup_col = NULL,
+    ptable_html_args = list(
+        transpose = summary_transpose,
+        sortable = !summary_transpose,
+        order_by = summary_orderby,
+        order_desc = summary_orderby_desc,
+        col_names = list(
+            test.id = "Test ID",
+            test.begin = "First snapshot begin time",
+            test.finish = "Last snapshot end time",
+            snap.first = "ID of first snapshot",
+            snap.last = "ID of last snapshot",
+            vcs.url = "VCS URL",
+            vcs.rev = "VCS revision"
+        )
+    ),
+    ptable_slares = summary_slas,
+    ptable_plugins = summary_plugins
+))
+```

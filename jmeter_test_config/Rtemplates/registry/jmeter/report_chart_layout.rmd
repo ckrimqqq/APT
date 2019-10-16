@@ -1,0 +1,141 @@
+```{r echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Report fragment that describes transaction charts layout.
+#' 
+#' Uses the following variables (params are not listed):
+#' @param jlo_name name of current transaction.
+#' @param jlo_group name of current group.
+#' @param jlo_data current transaction data.
+#' @param jlo_boxplot include components boxplot? (should be enabled for
+#' groups, but not for transactions and Total).
+
+.grand_total <- is.null(jlo_group)
+
+.xname <- if (.grand_total) {
+    "Grand total"
+} else if (jlo_name == "Total") {
+    paste0("'", jlo_group, ": Total'")
+} else {
+    sprintf("'%s (%s)'", jlo_name, jlo_group)
+}
+
+.suc <- jlo_data[success == TRUE]
+.fld <- jlo_data[success == FALSE]
+```
+
+`r builder$heading(1)` Hits Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/transactions_per_sec", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = .xname,
+    chart_by = "success_hr",
+    chart_total_layer = TRUE
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/transactions_per_sec", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = paste0(.xname, " HTTP codes"),
+    chart_by = "responseCode",
+    chart_total_layer = FALSE
+))
+```
+
+`r builder$heading(1)` Throughput Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/throughput", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = .xname,
+    chart_by = "success_hr",
+    chart_total_layer = TRUE
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/pagesz_histogram", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = .xname,
+    chart_by = "success_hr"
+))
+```
+
+`r builder$heading(1)` Response Time Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+if (jlo_boxplot) {
+    builder$include("jmeter/charts/response_boxplot", arguments = list(
+        chart_data = .suc,
+        chart_prefix = paste0(.xname, " successful "),
+        chart_by = "label",
+        chart_mode_latency = FALSE,
+        chart_mode_outliers = TRUE
+    ))
+}
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/response_time", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = paste0(.xname, " HTTP codes "),
+    chart_by = "responseCode",
+    chart_total_layer = FALSE,
+    chart_mode_latency = FALSE
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/report_chart_status", arguments = list(
+    jstat_data = .suc,
+    jstat_name = paste0(.xname, " successful")
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/report_chart_status", arguments = list(
+    jstat_data = .fld,
+    jstat_name = paste0(.xname, " failed")
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/response_histogram", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = .xname,
+    chart_by = "success_hr",
+    chart_mode_latency = FALSE
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/response_ecdf", arguments = list(
+    chart_data = jlo_data,
+    chart_prefix = .xname,
+    chart_by = "success_hr",
+    chart_mode_latency = FALSE
+))
+```
+
+`r builder$heading(1)` Latency Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/response_time", arguments = list(
+    chart_data = .suc,
+    chart_prefix = paste0(.xname, " successful "),
+    chart_by = "success_hr",
+    chart_total_layer = FALSE,
+    chart_mode_latency = TRUE
+))
+```
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("jmeter/charts/response_time", arguments = list(
+    chart_data = .fld,
+    chart_prefix = paste0(.xname, " failed "),
+    chart_by = "success_hr",
+    chart_total_layer = FALSE,
+    chart_mode_latency = TRUE
+))
+```

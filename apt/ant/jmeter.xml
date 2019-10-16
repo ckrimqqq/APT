@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="JMeter">
+	<target name="-CheckEngine">
+		<condition property="Test.Engine.JMeter">
+			<equals arg1="${Test.Engine}" arg2="jmeter" casesensitive="false" trim="true" />
+		</condition>
+	</target>
+	<target name="-JMeter.Test.InitAndStart" extensionOf="-EngineRun" depends="-CheckEngine" if="Test.Engine.JMeter">
+		<groovy>
+		<![CDATA[
+			import com.epam.performance.jmeter.*;
+			import com.epam.performance.jmeter.jsch.*;
+			import java.io.BufferedReader;
+			import java.io.FileInputStream;
+			import java.io.IOException;
+			import java.io.InputStreamReader;
+			import java.io.PipedInputStream;
+			import java.io.PipedOutputStream;
+			import java.io.PrintStream;
+			import java.util.ArrayList;
+			import java.util.List;
+			import java.util.logging.Level;
+			import java.util.logging.Logger;
+			import java.util.regex.Pattern;
+			import groovy.io.FileType;
+
+			JMHost newJMHost(final String alias) {
+				return new JMHost() {
+					{
+						setAlias(alias);
+						String prefix = "JMeter.Hosts." + alias;
+						setHostname(project.getProperty(prefix + ".HostName"));
+						setSSHPort(22);
+						setUsername(project.getProperty(prefix + ".UserName"));
+						setPassword(project.getProperty(prefix + ".Password"));
+						setKeyFilename(project.getProperty(prefix + ".PrivateKey"));
+						setKeyPassphrase(project.getProperty(prefix + ".PrivateKeyPassphrase"));
+						setEngineDir(project.getProperty(prefix + ".Directory"));
+					}
+				};
+			}
+
+			Thread listnerThread = null;
+			final PipedInputStream messagePipeIn = new PipedInputStream();
+			final PipedOutputStream messagePipeOut = new PipedOutputStream();
+			final PrintStream message = new PrintStream(messagePipeOut);
+			try {
+				messagePipeOut.connect(messagePipeIn);
+				listnerThread = new Thread("MessageListner") {
+					@Override
+					public void run() {
+						BufferedReader br = new BufferedReader(new InputStreamReader(messagePipeIn));
+						while (listnerThread != null) {
+							try {
+								while (br.ready()) {
+									ant.echo(br.readLine());
+								}
+							} catch (IOException ex) {
+								Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+							}
+						}
+						try {
+							messagePipeIn.close();
+						} catch (IOException ex) {
+							Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+						}
+					}
+				};
+				listnerThread.start();
+				JMConfiguration configuration = new JMConfiguration() {
+					{
+						jmApp = new JMTestFile(null, project.getProperty("JMeter.Application.zip"));
+						plugins = new JMTestFile(
+								project.getProperty("JMeter.Script.Plugins.Directory"),
+								project.getProperty("JMeter.Script.Plugins.zip"));
+						extras = new JMTestFile(
+								project.getProperty("JMeter.Script.Extra.Directory"),
+								project.getProperty("JMeter.Script.Extra.zip"));
+						master = new JMMaster() {
+							{
+								setHostAlias(project.getProperty("JMeter.Master.Host"));
+								setLocalDirectory(project.getProperty("JMeter.Master.Directory"), "");
+								setResultFilename(project.getProperty("JMeter.Master.TestResult.FileName"));
+								setResultFilenamePrefix(project.getProperty("JMeter.Master.TestResult.FileName.Prefix"), "\${S}_\${E}_");
+								setFilter(project.getProperty("JMeter.Master.TestResult.TransactionFilter"), "");
+								setLeaveAgentsRunning(project.getProperties().containsKey("JMeter.Master.LeaveAgentsRunning"));
+								setJVMArgs(project.getProperty("JMeter.Master.JVM.Args"));
+								setMasterStartParams(project.getProperty("JMeter.Master.StartParams"));
+								setScriptFilename(project.getProperty("JMeter.Script.FileName"));
+								setResultDir(project.getProperty("JMeter.Master.ResultDir"), ".");
+							}
+						};
+						if (master.getHostAlias() != null) {
+							this._hosts.put(master.getHostAlias(), newJMHost(master.getHostAlias()));
+						}
+						for (String alias : project.getProperty("JMeter.Agents").split(",")){
+							final String agentAlias = alias.trim();
+							if (!agentAlias.isEmpty()) {
+								JMAgent jmAgent = new JMAgent() {
+									{
+										setAlias(agentAlias);
+										String prefix = "JMeter.Agent." + agentAlias;
+										setHostAlias(project.getProperty(prefix + ".Host"));
+										setPort(project.getProperty(prefix + ".Port"));
+										setJVMArgs(project.getProperty(prefix + ".JVM.Args"));
+										setStartParams(project.getProperty(prefix + ".StartParams"));
+									}
+								};
+								JMHost jmHost;
+								if (getHosts().containsKey(jmAgent.getHostAlias())) {
+									jmHost = getHosts().get(jmAgent.getHostAlias());
+								} else {
+									jmHost = newJMHost(jmAgent.getHostAlias());
+									this._hosts.put(jmAgent.getHostAlias(), jmHost);
+								}
+								jmHost.addAgent(jmAgent);
+							}
+						}
+					}
+				};
+				JMMasterDriver master = new JMMasterDriverImpl(configuration);
+				master.setOutputStream(message);
+				JMAgentsDriver agents = new JMAgentsDriverImpl(configuration);
+				agents.setOutputStream(message);
+				JMeterTest jmeterTest = new JMeterTest(master, agents, message);
+				jmeterTest.start();
+				File jmMasterDir = new File(configuration.getMaster().getResultDir(), JMMasterDriver.JMMASTERLOG_DIR);
+				List<File> listFiles = new Object() {
+					public List<File> getListFiles(File dir) {
+						return getList_Files(dir, new ArrayList<File>());
+					}
+					private List<File> getList_Files(File dir, List<File> list) {
+						for (File file : dir.listFiles()) {
+							if (file.isFile()) {
+								list.add(file);
+							}
+							if (file.isDirectory()) {
+								getList_Files(file, list);
+							}
+						}
+						return list;
+					}
+				}.getListFiles(jmMasterDir);
+				for (File file : listFiles) {
+					if (file.isFile() && (!project.getProperties().containsKey("Test.Result.FileName") && (file.getName().endsWith(((configuration.getMaster().getFilter() != null) ? "Filtered_" : "Full_") + configuration.getMaster().getResultFilename())))) {
+						project.setProperty("Test.Result.FileName", file.getAbsolutePath());
+						project.setProperty("Test.Report.FileName.Prefix", file.getAbsolutePath().replaceFirst(Pattern.quote(configuration.getMaster().getResultFilename()) + "\$", ""));
+					}
+				}
+			} catch (IOException ex) {
+				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+			} catch (JMConfigurationException ex) {
+				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+			} catch (JMRunTimeException ex) {
+				Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+			} finally {
+				listnerThread = null;
+			}
+		]]>
+		</groovy>
+		<echo message="Done!" />
+	</target>
+</project>

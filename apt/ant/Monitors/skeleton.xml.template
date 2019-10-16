@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-skeleton">
+	<!--
+		Global parameters availible in scope:
+			Monitors.OutputFile	- name of file to write monitor data
+			Monitors.StartTime	- time of start monitoring
+			Monitors.EndTime	- time of end monitoring
+	-->
+	<target name="-setup" extensionOf="-Monitors-setup" depends="-LoadParameters" if="Hardware.Metrics.skeleton.properties">
+		<!-- Write your code here -->
+	</target>
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters" if="Hardware.Metrics.skeleton.properties">
+		<!-- Write your code here -->
+	</target>
+	<target name="-LoadParameters" if="Hardware.Metrics.skeleton.properties">
+		<property file="${Hardware.Metrics.skeleton.properties}" />
+		<property name="Monitors.Header.need" value="true" />
+	</target>
+</project>

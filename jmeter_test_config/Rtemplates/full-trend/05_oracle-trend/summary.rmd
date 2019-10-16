@@ -1,0 +1,28 @@
+`r builder$heading(1)` Oracle
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("oracle/tables/trend_snapshots_summary", arguments = list(
+    table_data = current_data,
+    table_slas = slares
+))
+
+for (colname in c("elapsed", "cpu", "iowait", "exec", "reads", "fetch")) {
+    cat(builder$heading(2), " Changes of ", capitalize(colname), "\n\n")
+    
+    builder$include("trend/tables/degradation", arguments = list(
+        degradation_source = history_obj,
+        degradation_by = colname,
+        degradation_category = head(handler$d, 1),
+        degradation_ignore_list = NULL,
+        degradation_slas = slares,
+        degradation_suppress = "group",
+        degradation_plugins = list(
+            id_extractor = list(
+                ptable_extractor_column = "name",
+                ptable_extractor_handler = handler
+            )
+        ),
+        degradation_linkify = "name"
+    ))
+}
+```

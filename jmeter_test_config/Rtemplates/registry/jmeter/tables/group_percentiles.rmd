@@ -1,0 +1,54 @@
+```{r echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter test description table for regular report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_history historical data storage object.
+#' @param table_metric_descr table metric description object (part of jmeter schema).
+#' @param table_mode indicates table aggregation mode, 
+#' one of "total", "group", "transaction"
+
+.percent_colnames <- c(
+    list(name = "Label", group = NA),
+    setNames(
+        paste0(100 * param_distribution_percentiles, " %, ", table_metric_descr$units),
+        paste0("p", param_distribution_percentiles)
+    )
+)
+```
+
+`r builder$heading(1)` `r capitalize(table_mode)` `r table_metric_descr$name_full` percentiles
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+if (table_mode == "total") {
+    table_group_key <- NULL
+} else if (table_mode == "group") {
+    table_group_key <- "businessGroup"
+} else {# transaction
+    .percent_colnames$group <- "Group"
+    table_group_key <- "label"
+}
+
+builder$include("print_table", arguments = list(
+    ptable = percentiles_summary(
+        table_data,
+        percentiles = param_distribution_percentiles,
+        group_key = table_group_key, 
+        stat_col = table_metric_descr$name_sys,
+        success_only = param_stat_success
+    ),
+    ptable_sla_class = paste0(table_metric_descr$name_sys, ".percentiles"),
+    ptable_sla_subclass = table_mode,
+    ptable_bgroup_col = "group",
+    ptable_html_args = list(
+        sortable = TRUE,
+        order_by = "name",
+        order_desc = FALSE,
+        col_names = .percent_colnames,
+        linkify_cols = "name"
+    ),
+    ptable_slares = table_slas,
+    ptable_plugins = NULL
+))
+```

@@ -1,0 +1,63 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is an entry point (template) for any report generation. Type 
+# of report is determined according to configuration. Configuration
+# is just a filesystem folder containing any number of nested folders
+# with names matching the pattern '${order_number}_${plugin_name}'.
+# - order_number is an integer that should be unique for each folder 
+# (otherwise result is undetermined). It defines natural order in which
+# plugins will be processed. 
+# - plugin_name is used to fetch corresponding scripts for initialization 
+# and termination.
+# Each plugin folder contains rmd templates. Template names should 
+# match event name when current template should be invoked.
+#
+# The following events are supported right now:
+# - summary (for summary statistics of whole dataset), 
+# summary blocks from all plugins will be reported under single level - Summary
+# - block   (for detailed statistics of whole dataset), this block
+# will be displayed as top level fragment for each plugin.
+# - group   (for statistics of group for given dataset), this one
+# is nested to corresponding block
+# - element (for statistics of element for given group), this one
+# is nested to corresponding group
+# - group_end  (for statistics of group for given dataset), this one
+# will be displayed on group level after all elements of group will be displayed
+# - block_end  (for detailed statistics of whole dataset), this one
+# will be displayed on block level after all groups of dataset will be displayed
+
+deps <- new("ResourceDependencies")
+
+# public data stores
+builder <- new("ReportBuilder", registry_loc = "registry")
+
+builder$inject_vars(
+  expvars = "input_repoconf",
+  var_files = c("defaults.R", global_config),
+  text_vars = global_user_variables
+)
+
+builder$init_plugins(input_repoconf)
+
+builder$begin(
+  stylesheets = deps$styles,
+  htmltemplate = deps$template
+)
+```
+
+`r builder$heading(1)` Summary
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+builder$linear_event_seq("summary", as_new_lvl = TRUE)
+
+builder$hier_event_seq(
+  on.block = "block",
+  on.group = "group",
+  on.el = "element",
+  on.group_end = "group_end",
+  on.block_end = "block_end"
+)
+
+builder$end(scripts = deps$scripts)
+builder$terminate()
+```

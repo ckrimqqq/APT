@@ -1,0 +1,9 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is termination script for default report (per single test run).
+#
+# It doesn't make any assumptions what plugins were activated and 
+# just saves historical data with SLA results to filesystem.
+
+history_obj$dump(slares$verdict)
+```

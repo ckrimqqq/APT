@@ -1,0 +1,57 @@
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+
+.degr_input <- degradation_source$degradation(
+    field = degradation_by,
+    ignore_names = degradation_ignore_list,
+    category = degradation_category
+)
+
+degradation_columns <- list(
+    group = "Group",
+    name = "Element",
+    curr = "Curr. Val.",
+    prev = "Prev. Val.",
+    diff = "Diff.",
+    value = "Degr., %",
+    prev = "Prev. test ID"
+)
+
+degradation_columns[degradation_suppress] <- NA
+
+for (degradation_mode_impr in c(TRUE, FALSE)) {
+    .degr_type <- ifelse(degradation_mode_impr, "Improvement", "Degradation")
+    
+    .degr_src <- head(
+        .degr_input[!is.na(value)][
+            do.call(
+                ifelse(degradation_mode_impr, `<`, `>`), 
+                list(value, 0)
+            )
+            ][, value := value * 100],
+        param_trend_degrtop
+    )
+    
+    cat(builder$heading(1), " Relative Performance ", .degr_type, " Table\n\n")
+    cat(
+        "Difference is measured as relative ", 
+        degradation_by, 
+        " metric difference (%) between latest test and previous available.\n\n"
+    )
+    
+    builder$include("print_table", arguments = list(
+        ptable = .degr_src,
+        ptable_sla_class = paste0(tolower(degradation_category), ".degradation"),
+        ptable_sla_subclass = ifelse(degradation_mode_impr, "impr", "degr"),
+        ptable_bgroup_col = NULL,
+        ptable_html_args = list(
+            sortable = TRUE,
+            order_by = "value",
+            order_desc = !degradation_mode_impr,
+            col_names = degradation_columns,
+            linkify_cols = degradation_linkify
+        ),
+        ptable_slares = degradation_slas,
+        ptable_plugins = degradation_plugins
+    ))
+}
+```

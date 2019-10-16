@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="apt" default="start" basedir=".">
+	<taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy"/>
+	<include prefixSeparator="">
+		<fileset dir="ant" includes="*.xml" />
+	</include>
+	<groovy>
+	<![CDATA[
+		runTestTarget = ant.project.getTargets().get("start");
+		runTestTarget.setDepends(project.getProperty("Test")?:"Engine,Analyzer");
+	]]>
+	</groovy>
+	<target name="start" />
+	<target name="-Test.Config.Check" unless="Test.Config.FileName">
+		<fail message="Test configuration file (Test.Config.FileName) was not specified." />
+	</target>
+	<target name="-Test.Config.Load" depends="-Test.Config.Check">
+		<groovy>
+		<![CDATA[
+			ant.available(
+				file : project.getProperty("Test.Config.FileName"),
+				property : "Test.Config.FileName.Available");
+			ant.fail(
+				message : "Test configuration file does not exist.",
+				unless : "Test.Config.FileName.Available");
+			String testConfigFileName = project.getProperty("Test.Config.FileName");
+			String testConfigDirectory = project.getProperty("Test.Config.Directory");
+			if (!testConfigDirectory) {
+				int lastSep = testConfigFileName.lastIndexOf(File.separator);
+				testConfigDirectory = lastSep<0?".":testConfigFileName.substring(0, lastSep);
+				project.setProperty("Test.Config.Directory", testConfigDirectory);
+			}
+			ant.property(
+				file : testConfigFileName);
+		]]>
+		</groovy>
+	</target>
+	<target name="Engine" depends="-Test.Config.Load,-EnginePostRun" />
+	<extension-point name="-EnginePreRun" />
+	<extension-point name="-EngineRun" depends="-EnginePreRun" />
+	<extension-point name="-EnginePostRun" depends="-EngineRun" />
+	<target name="Analyzer" depends="-Test.Config.Load,-AnalyzerRun" />
+	<extension-point name="-AnalyzerRun" />
+</project>

@@ -1,0 +1,99 @@
+
+<span id='`r to_id(current_name)`' />
+
+`r builder$heading(1)` `r current_name`
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+data_ora <- do.call(history_obj$get_table, as.list(current_data))
+data_slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+
+cat(
+    paste0(
+        "<pre><code class='sql'>",
+        rawToChar(base64decode(tail(data_ora$text, 1))),
+        "</code></pre>\n\n"
+    )
+)
+
+builder$include("oracle/tables/trend_queries_summary", arguments = list(
+    report_data = data_ora,
+    report_slares = data_slares
+))
+
+# elapsed & execution deltas
+for (pack in list(
+    list("elapsed", "Elapsed Time", "s"), 
+    list("exec", "Executions", "count"))) {
+    builder$include("trend/tables/trend_deltas", arguments = list(
+        table_history = history_obj,
+        table_path = current_data,
+        table_metric = pack[[1]],
+        table_metric_hr = pack[[2]],
+        table_slas = data_slares,
+        table_bgroup = NULL,
+        table_type = "oracle",
+        table_units = pack[[3]]
+    ))
+}
+
+# elapsed, cpu & iowait 
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_ora,
+    chart_series = list(
+        "elapsed" = "Elapsed",
+        "cpu" = "CPU",
+        "iowait" = "IO Wait"
+    ),
+    chart_heading = "Total Times",
+    chart_name = paste0(current_name, " total times"),
+    chart_unit = "s"
+))
+
+# elapsed, cpu & iowait per exec
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_ora[, list(
+        test.id = test.id,
+        elapsed = elapsed / ifelse(exec, exec, 1),
+        cpu = cpu / ifelse(exec, exec, 1),
+        iowait = iowait / ifelse(exec, exec, 1)
+    )],
+    chart_series = list(
+        "elapsed" = "Elapsed",
+        "cpu" = "CPU",
+        "iowait" = "IO Wait"
+    ),
+    chart_heading = "Times per Execution",
+    chart_name = paste0(current_name, " times per execution"),
+    chart_unit = "s"
+))
+
+# reads
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_ora,
+    chart_series = list("reads" = "Reads"),
+    chart_heading = "Total Reads",
+    chart_name = paste0(current_name, " total reads"),
+    chart_unit = "count"
+))
+
+# reads per exec
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_ora[, list(
+        test.id = test.id,
+        reads = reads / ifelse(exec, exec, 1)
+    )],
+    chart_series = list("reads" = "Reads"),
+    chart_heading = "Reads per Execution",
+    chart_name = paste0(current_name, " reads per execution"),
+    chart_unit = "count"
+))
+
+# execs
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_ora,
+    chart_series = list("exec" = "Executions"),
+    chart_heading = "Executions",
+    chart_name = paste0(current_name, " total executions"),
+    chart_unit = "count"
+))
+```

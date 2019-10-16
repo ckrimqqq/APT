@@ -1,0 +1,98 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is initializer script for jmeter plugin for default report 
+# (per single test run).
+#
+# It doesn't depend on any other plugin.
+
+builder$inject_vars(expvars = c("input_jmpath", "input_txndat"))
+builder$inject_vars("report.id", is_file = FALSE)
+
+tryCatch({
+    jm <- read_jmeter(
+        input_jmpath,
+        extras = list(
+            columns = c("responseCode", "threadName", "Latency"),
+            classes = c("character", "character", "integer"),
+            modifier = c(NA, NA, 1000)
+        ),
+        filter_chain = param_jm_filter_chain,
+        name_filer = param_names,
+        distributed = param_distributed,
+        suc_names = param_logical_names[c("TRUE", "FALSE")],
+        business_groups = param_business_group
+    )
+    
+    if (is.null(report.id)) {
+        report.id <- .epoch2text(jm$timeStamp[1], param_timezone)
+    }
+    
+    if (is.null(jm)) {
+        apt_logger("WARN: Jmeter is NULL. It usually means that input_jmpath file is not exists.")
+    } else {
+        apt_logger_verbose("Number of JMeter samples after file is read: ", nrow(jm))
+    }
+    
+    setRefClass(
+        Class = "JMeterReportSource",
+        fields = list(
+            d = "data.table",
+            alias = "character"
+        ),
+        methods = list(
+            get_summary = function() reportResTuple(d, alias),
+            get_groups = function() {
+                c(NA_character_, sort(unique(d$businessGroup)))
+            },
+            get_group = function(groupname) {
+                if (is.na(groupname)) {
+                    new(
+                        "JMeterReportSource", 
+                        d = d, 
+                        alias = "Total"
+                    )
+                } else {
+                    new(
+                        "JMeterReportSource", 
+                        d = d[businessGroup == groupname], 
+                        alias = groupname
+                    )
+                }
+            },
+            get_elements = function() {
+                if (alias == "Total") {
+                    NULL
+                } else {
+                    c(NA_character_, sort(unique(d$label)))
+                }
+            },
+            get_element = function(elemname) {
+                if (is.na(elemname)) {
+                    new(
+                        "JMeterReportSource", 
+                        d = d, 
+                        alias = "Total"
+                    )
+                } else {
+                    new(
+                        "JMeterReportSource", 
+                        d = d[label == elemname], 
+                        alias = elemname
+                    )
+                }
+            }
+        ),
+        contains = c("AbstractReportSource")
+    )
+    
+    if (is.data.table(jm)) {
+        builder$register_plugin_handler(
+            "jmeter", 
+            new("JMeterReportSource", d = jm, alias = "JMeter")
+        )
+    }
+}, error = function(e) {
+    apt_logger("ERROR: jmeter plugin error (this may be a reason for further failures) - ", toString(e))
+})
+
+```

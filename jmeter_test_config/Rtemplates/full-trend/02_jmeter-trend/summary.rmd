@@ -1,0 +1,56 @@
+`r builder$heading(1)` JMeter
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("jmeter/tables/trend_description", arguments = list(
+    table_data = current_data,
+    table_slas = slares,
+    table_history = NULL,
+    table_schema = jmeter_schema
+))
+
+builder$include("trend/tables/degradation", arguments = list(
+    degradation_source = history_obj,
+    degradation_by = "median",
+    degradation_category = handler$d$path,
+    degradation_ignore_list = "Total",
+    degradation_slas = slares,
+    degradation_suppress = NULL,
+    degradation_plugins = NULL,
+    degradation_linkify = "name"
+))
+
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = current_data,
+    chart_series = list("vu" = "Users"),
+    chart_name = "Number of virtual users",
+    chart_heading = NULL,
+    chart_unit = "Users"
+))
+
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = current_data,
+    chart_series = list("tps.avg" = "Avg. TPS"),
+    chart_name = "Average Transaction per Second Rate",
+    chart_heading = NULL,
+    chart_unit = "TPS"
+))
+
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = current_data,
+    chart_series = list("thr.avg" = "Avg. Throughput"),
+    chart_name = "Average Throughput",
+    chart_heading = NULL,
+    chart_unit = "KB/s"
+))
+
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = current_data,
+    chart_series = list(
+        "txn.total" = "Total",
+        "failed" = "Failed"
+    ),
+    chart_name = "Transaction Statuses",
+    chart_heading = NULL,
+    chart_unit = "Count"
+))
+```

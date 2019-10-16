@@ -1,0 +1,51 @@
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter test description table.
+#'
+#' It is designed to be used either for trend or for report
+#' tables creation. It's also supposed to be used in embedded 
+#' mode, so no header is present.
+#'
+#' @param description_data data for table.
+#' @param description_slas SLA results storage object.
+#' @param description_transpose transpose results table.
+#' @param description_sort make a table sortable in HTML.
+#' @param description_plugins list of plugin settings.
+#' @param description_orderby character name of table column for row ordering.
+#' @param description_orderby_desc logical flag specifying direction of sorting.
+#' TRUE for descending, i.e. from highest to lowest.
+#' @param description_schema jmeter schema object.
+
+.sc <- description_schema
+
+builder$include("print_table", arguments = list(
+    ptable = description_data,
+    ptable_sla_class = "report.description",
+    ptable_sla_subclass = NULL,
+    ptable_bgroup_col = NULL,
+    ptable_html_args = list(
+        order_by = description_orderby,
+        order_desc = description_orderby_desc,
+        transpose = description_transpose,
+        sortable = description_sort,
+        col_names = list(
+            test.id = "Test start time",  # if trend
+            begin = "Test start time",    # if regular
+            end = "Test end time",
+            duration = "Test duration",
+            vu = "Max number of users",
+            thr = sprintf("Total %s, %s", .sc$bytes$name_full, .sc$bytes$units),
+            thr.avg = sprintf("Average %s, %s/%s", .sc$bytes$name_full, .sc$bytes$units, .sc$time$units),
+            txn.total = "Total transactions",
+            tps.avg = paste0("Average transaction rate, txn/", .sc$time$units),
+            failed = "Failed transactions",
+            fail.ratio = "Error ratio",
+            vcs.url = "VCS URL",
+            vcs.rev = "VCS revision"
+        )
+    ),
+    ptable_slares = description_slas,
+    ptable_plugins = description_plugins
+))
+```

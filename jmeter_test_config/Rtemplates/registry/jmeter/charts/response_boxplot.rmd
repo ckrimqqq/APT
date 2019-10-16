@@ -1,0 +1,47 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter boxplot chart.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+#' @param chart_prefix chart title prefix (chart specific data will be appended).
+#' @param chart_by metric for data grouping (1 line on plot for each group).
+#' @param chart_mode_latency if TRUE Latency will be used as metric otherwise
+#' elapsed.
+#' @param chart_mode_outliers if TRUE outliers in boxplots will be printed,
+#' otherwise not.
+
+.is_latency <- !is.null(chart_mode_latency) && chart_mode_latency
+chart_metric <- ifelse(.is_latency, "Latency", "elapsed")
+chart_metric_name <- paste0(
+    " ",
+    ifelse(.is_latency, " lat. time", " resp. time"),
+    " distribution"
+)
+
+chart_layers <- list(
+    list(
+        key = chart_by,
+        yaxis = chart_metric
+    )
+)
+
+chart(
+    chart_data,
+    chart_boxplot,
+    chart_layers,
+    chartops = c(
+        list(
+            gtitle = paste0(
+                chart_prefix,
+                chart_metric_name
+            ),
+            gxlab = "Transactions",
+            gylab = "sec"
+        ),
+        param_charts_common
+    ),
+    flip = TRUE,
+    outliers = chart_mode_outliers
+)
+```

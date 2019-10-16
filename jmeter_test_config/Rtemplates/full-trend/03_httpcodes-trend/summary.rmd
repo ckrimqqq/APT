@@ -1,0 +1,14 @@
+`r builder$heading(1)` HTTP Codes
+
+```{r results='asis', message=FALSE, echo=FALSE, error=FALSE, warning=FALSE}
+builder$include("trend/tables/degradation", arguments = list(
+    degradation_source = history_obj,
+    degradation_by = "ratio",
+    degradation_category = head(handler$d, 1),
+    degradation_ignore_list = NULL,
+    degradation_slas = slares,
+    degradation_plugins = NULL,
+    degradation_suppress = "group",
+    degradation_linkify = "name"
+))
+```

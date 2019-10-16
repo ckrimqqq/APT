@@ -1,0 +1,28 @@
+
+`r builder$heading(1)` SLA Status
+
+```{r results='asis', message=FALSE, echo=FALSE}
+.verdict_table <- table_sla$summary(
+  table_verdicts$test.id,
+  table_verdicts$status,
+  descr = param_trend_summary
+)
+
+.verdict_table_sla <- data.table(.verdict_table)
+.verdict_table_sla[, test.id := NA]
+.verdict_table_sla <- data.matrix(.verdict_table_sla) == 1
+
+for (col in tail(colnames(.verdict_table_sla), -1)) 
+  .verdict_table[[col]] <- param_logical_names[as.character(.verdict_table[[col]])]
+
+print_table(
+  .verdict_table,
+  sla_m = .verdict_table_sla,
+  sortable = FALSE,
+  col_names = list(
+    test.id = "Test ID",
+    test = "Verdict",
+    total = "Conclusion"
+  )
+)
+```

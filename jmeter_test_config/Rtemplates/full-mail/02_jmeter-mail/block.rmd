@@ -1,0 +1,12 @@
+
+`r builder$heading(1)` Grand Total Performance Trend
+
+```{r include=FALSE, message=FALSE, echo=FALSE, warning=FALSE}
+builder$include("trend/charts/mail", arguments = list(
+    chart_data = do.call(history_obj$get_table, as.list(handler$path_summ)),
+    chart_series = list("tps.avg" = "Avg. TPS"),
+    chart_name = "Average TPS trend",
+    chart_unit = "txn/sec",
+    chart_chunkname = "tps"
+), use.expand = TRUE)
+```

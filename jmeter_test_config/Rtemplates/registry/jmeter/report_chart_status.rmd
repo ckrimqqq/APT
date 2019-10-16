@@ -1,0 +1,34 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Report fragment that describes response time charts.
+#' 
+#' Uses the following variables (params are not listed):
+#' @param jstat_data jmeter data.table.
+#' @param jstat_name jmeter data name.
+
+builder$include("jmeter/charts/response_time", arguments = list(
+    chart_data = jstat_data,
+    chart_prefix = jstat_name,
+    chart_by = "success_hr",
+    chart_total_layer = FALSE,
+    chart_mode_latency = FALSE
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+builder$include("jmeter/charts/response_boxplot", arguments = list(
+    chart_data = jstat_data,
+    chart_prefix = paste0(jstat_name, " (excl. outliers)"),
+    chart_by = "success_hr",
+    chart_mode_latency = FALSE,
+    chart_mode_outliers = FALSE
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+builder$include("jmeter/charts/boxplots_over_time", arguments = list(
+    chart_data = jstat_data,
+    chart_prefix = jstat_name,
+    chart_mode_latency = FALSE
+))
+```

@@ -1,0 +1,91 @@
+
+`r builder$heading(1)` Queries ordered by `r report_metric`
+
+- Opt. cost is minimum query optimizer cost among all included snapshots.
+- %CPU - CPU Time as a percentage of Elapsed Time.
+- %IO - User I/O Time as a percentage of Elapsed Time.
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+#' Oracle plugin helper table printer fragment for regular report.
+#'
+#' Uses the following variables (params are not listed):
+#' @param report_data oracle data for target table.
+#' @param report_metric column name for which table should be build.
+#' @param report_handler handler associated with Oracle plugin for active IDs
+#' tracking.
+#' @param report_slares sla results storage.
+
+report_source <- head(
+    report_data[order(-report_data[[report_metric]])],
+    param_sqlrpt_top
+)
+
+report_for_print <- switch(
+    report_metric,
+    elapsed = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        elapsed = elapsed,
+        exec = exec,
+        elapsed_per_exec = elapsed / exec,
+        perc_cpu = cpu / elapsed * 100,
+        perc_io = iowait / elapsed * 100
+    )],
+    cpu = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        cpu = cpu,
+        exec = exec,
+        cpu_per_exec = cpu / exec,
+        perc_cpu = cpu / elapsed * 100,
+        perc_io = iowait / elapsed * 100
+    )],
+    iowait = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        io = iowait,
+        exec = exec,
+        io_per_exec = iowait / exec,
+        perc_cpu = cpu / elapsed * 100,
+        perc_io = iowait / elapsed * 100
+    )],
+    reads = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        reads = reads,
+        exec = exec,
+        reads_per_exec = reads / exec,
+        elapsed = elapsed
+    )],
+    exec = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        exec = exec,
+        elapsed = elapsed,
+        perc_cpu = cpu / elapsed * 100,
+        perc_io = iowait / elapsed * 100
+    )],
+    fetch = report_source[, list(
+        id = id,
+        min_cost = min_cost,
+        fetch = fetch,
+        exec = exec,
+        elapsed = elapsed,
+        perc_cpu = cpu / elapsed * 100,
+        perc_io = iowait / elapsed * 100
+    )]
+)
+
+builder$include("oracle/tables/generic_queries_summary", arguments = list(
+    summary_data = report_for_print,
+    summary_metric = report_metric,
+    summary_plugins = list(
+        id_extractor = list(
+            ptable_extractor_column = "id",
+            ptable_extractor_handler = report_handler
+        )
+    ),
+    summary_slares = report_slares
+))
+```

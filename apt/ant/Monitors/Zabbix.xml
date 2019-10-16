@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-Zabbix">
+	<target name="-setup" extensionOf="-Monitors-setup" depends="-LoadParameters" if="Hardware.Metrics.Zabbix.properties" />
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters" if="Hardware.Metrics.Zabbix.properties">
+		<groovy>
+		<![CDATA[
+			import com.epam.performance.apt.zabbix.api.Error;
+			import com.epam.performance.apt.zabbix.api.Request;
+			import com.epam.performance.apt.zabbix.api.Response;
+			import com.epam.performance.apt.zabbix.api.Zabbix;
+			import com.epam.performance.apt.zabbix.api.methods.Method;
+			import com.epam.performance.apt.zabbix.APTZabbix;
+			import com.epam.performance.apt.zabbix.Configuration;
+			import com.epam.performance.utils.Streams;
+			import java.util.regex.Matcher;
+			import java.util.regex.Pattern;
+			import groovy.json.JsonBuilder;
+			import groovy.json.JsonSlurper;
+
+			final String prefix = "Hardware.Metrics.Zabbix";
+			// Config loading
+			List<Configuration> lc = new ArrayList<Configuration>();
+			PrintStream out = null;
+			PrintStream err = System.err;
+			Streams s;
+			String startTime = project.getProperty("Monitors.StartTime");
+			String endTime = project.getProperty("Monitors.EndTime");
+			String outputFilename = project.getProperty("Monitors.OutputFile");
+			Integer parThreadCount;
+			try {
+				parThreadCount = Integer.parseInt(project.getProperty(prefix + ".ParallelTreads"));
+			} catch (NumberFormatException ex) {
+				parThreadCount = 10;
+			}
+			String[] aliases = project.getProperty(prefix + ".ServerList").split(",");
+			for (String alias : aliases) {
+				String prefix2 = prefix + ".Server." + alias;
+				String zabbixURL = project.getProperty(prefix2 + ".APILink");
+				if ((zabbixURL == null) || (zabbixURL.isEmpty())) {
+					zabbixURL = "/api_jsonrpc.php";
+				}
+				zabbixURL = project.getProperty(prefix2 + ".URL") + zabbixURL;
+				String username = project.getProperty(prefix2 + ".UserName");
+				String password = project.getProperty(prefix2 + ".Password");
+				try {
+					Configuration c = new Configuration(new Zabbix(new URL(zabbixURL), username, password) {
+						@Override
+						protected String toJson(Request rq) {
+							Object obj = new JsonSlurper().parseText(new JsonBuilder(rq).toString());
+							obj.method = rq.getMethod().toString();
+							return new JsonBuilder(obj).toString();
+						}
+						@Override
+						protected Response fromJson(Reader r) {
+							StringBuilder sb = new StringBuilder();
+							try {
+								char[] buff = new char[8 * 1024];
+								int num;
+								while ((num = r.read(buff, 0, buff.length)) != -1) {
+									sb.append(buff, 0, num);
+								}
+							} catch (IOException ex) {
+								ex.printStackTrace(err);
+							}
+							return new Response(new JsonSlurper().parseText(sb.toString()));
+						}
+					});
+					String[] hosts = project.getProperty(prefix2 + ".HostList").split(",");
+					for (String host : hosts) {
+						String prefix3 = prefix2 + ".Host." + host;
+						String zabbixName = project.getProperty(prefix3 + ".ZabbixName");
+						Matcher m = Pattern.compile("'([^']*)'").matcher(project.getProperty(prefix3 + ".CounterList"));
+						while (m.find()) {
+							c.addItem(zabbixName, m.group(1));
+						}
+					}
+					lc.add(c);
+				} catch (MalformedURLException ex) {
+					ex.printStackTrace(err);
+				}
+			}
+			//Config processing
+			try {
+				out = new PrintStream(new FileOutputStream(outputFilename, true));
+				s = new Streams(System.in, out, err);
+				APTZabbix.process(lc, startTime, endTime, s, parThreadCount);
+			} catch (FileNotFoundException ex) {
+				ex.printStackTrace(err);
+			} finally {
+				if (out != null) {
+					out.close();
+				}
+			}
+		]]>
+		</groovy>
+	</target>
+	<target name="-LoadParameters" if="Hardware.Metrics.Zabbix.properties">
+		<property file="${Hardware.Metrics.Zabbix.properties}" />
+		<property name="Monitors.Header.need" value="true" />
+	</target>
+</project>

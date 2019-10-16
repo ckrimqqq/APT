@@ -1,0 +1,25 @@
+
+```{r {{chart_chunkname}}, include=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+if (any(!is.na(chart_data[, names(chart_series), with = FALSE]))) {
+    chart(
+        chart_data,
+        chart_linechart,
+        list(
+            list(
+                xaxis = "test.id", 
+                series = names(chart_series), 
+                series_names = chart_series
+            )
+        ),
+        use_points = TRUE,
+        chartops = c(
+            list(
+                gtitle = chart_name,
+                gxlab = "Test",
+                gylab = chart_unit
+            ),
+            param_charts_common
+        )
+    )
+}
+```

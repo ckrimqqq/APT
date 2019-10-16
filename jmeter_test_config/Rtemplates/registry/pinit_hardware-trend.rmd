@@ -1,0 +1,65 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# Hardware plugin initializer script for trend report (for historical data).
+#
+# It assumes that historical data has been already read and reuses it to
+# provide custom AbstractReportSource implementation for handler.
+#
+# Associated handler specifies methods fro getting summary, groups and 
+# elements, so no event files will be ignored.
+
+builder$inject_vars("history_obj", is_file = FALSE)
+
+setRefClass(
+    Class = "HardwareTrendSource",
+    fields = list(
+        ho = "HistoryData",
+        d = "character",
+        alias = "character"
+    ),
+    methods = list(
+        initialize = function(hist_object = NULL, pd = NULL, palias = "") {
+            if (!is.null(hist_object)) {
+                ho <<- hist_object
+            }
+            if (is.null(pd)) {
+                d <<- "Hardware"
+            } else {
+                d <<- pd
+            }
+            alias <<- palias
+        },
+        get_summary = function() reportResTuple(NULL, alias),
+        get_groups = function() sort(ho$get_names(d)),
+        get_group = function(groupname) {
+            new(
+                "HardwareTrendSource", 
+                pd =  c(d, groupname),
+                palias = groupname,
+                hist_object = ho
+            )
+        },
+        get_elements = function() sort(ho$get_names(d)),
+        get_element = function(elemname) {
+            new(
+                "HardwareTrendSource", 
+                pd =  c(d, elemname),
+                palias = elemname,
+                hist_object = ho
+            )
+        }
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj) && history_obj$is_active("Hardware")) {
+    builder$register_plugin_handler(
+        "hardware-trend",
+        new(
+            "HardwareTrendSource", 
+            hist_object = history_obj, 
+            palias = "Hardware"
+        )
+    )
+}
+```

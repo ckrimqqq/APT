@@ -1,0 +1,42 @@
+`r builder$heading(1)` `r table_metric_hr` Deltas Table
+
+```{r results='asis', message=FALSE, echo=FALSE}
+table_data_full <- do.call(table_history$get_table, c(as.list(table_path), active = FALSE))
+table_verdicts_full <- table_history$get_verdicts(table_history$get_ids(path = table_path))
+
+.d <- trend_summary(
+  table_data_full, 
+  id_field = "test.id", 
+  field = table_metric,
+  verdicts = table_verdicts_full,
+  verdicts_names = param_logical_names,
+  n_mm = param_trend_mmean
+)
+
+.d[, rel.prev := rel.prev * 100]
+.d[, rel.mm := rel.mm * 100]
+
+builder$include("print_table", arguments = list(
+  ptable = .d[.d$test.id %in% table_history$active_tests],
+  ptable_sla_class = paste0(table_type, ".deltas"),
+  ptable_sla_subclass = table_metric,
+  ptable_bgroup_col = table_bgroup,
+  ptable_html_args = list(
+    transpose = FALSE,
+    sortable = TRUE,
+    col_names = list(
+      test.id = "Test ID",
+      verdict = "Verdict",
+      val = paste0(table_metric_hr, " ,", table_units),
+      val.prev = "Prev.",
+      abs.prev = paste0("Diff., ", table_units),
+      rel.prev = "Diff., %",
+      val.mm = paste0("Mov.Avg., ", table_units),
+      abs.mm = paste0("Diff., ", table_units),
+      rel.mm = "Diff., %"
+    )
+  ),
+  ptable_slares = table_slas,
+  ptable_plugins = NULL
+))
+```

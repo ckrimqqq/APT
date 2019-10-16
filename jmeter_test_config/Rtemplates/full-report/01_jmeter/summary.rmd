@@ -1,0 +1,104 @@
+
+`r builder$heading(1)` JMeter Summary
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Test description table (add include=FALSE in header above to disable)
+builder$include("jmeter/tables/test_description", arguments = list(
+    table_data = current_data,
+    table_slas = slares,
+    table_history = history_obj,
+    table_schema = jmeter_schema
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Response summary tables
+builder$include("jmeter/report_table_layout", arguments = list(
+    tlayout_type = "group_summary",
+    tlayout_data = current_data,
+    tlayout_slares = slares,
+    tlayout_history = history_obj,
+    tlayout_metric_descr = jmeter_schema$elapsed,
+    tlayout_args = list(
+        list(
+            table_dump_location = input_txndat,
+            table_dump_append = FALSE
+        ),
+        list(table_dump_location = NULL),
+        list(
+            table_dump_location = input_txndat,
+            table_dump_append = TRUE
+        )
+    )
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Response distribution tables
+builder$include("jmeter/report_table_layout", arguments = list(
+    tlayout_type = "group_distribution",
+    tlayout_data = current_data,
+    tlayout_slares = slares,
+    tlayout_history = history_obj,
+    tlayout_metric_descr = jmeter_schema$elapsed,
+    tlayout_args = NULL
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Response percentile tables
+builder$include("jmeter/report_table_layout", arguments = list(
+    tlayout_type = "group_percentiles",
+    tlayout_data = current_data,
+    tlayout_slares = slares,
+    tlayout_history = history_obj,
+    tlayout_metric_descr = jmeter_schema$elapsed,
+    tlayout_args = NULL
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Latency summary tables
+builder$include("jmeter/report_table_layout", arguments = list(
+    tlayout_type = "group_summary",
+    tlayout_data = current_data,
+    tlayout_slares = slares,
+    tlayout_history = history_obj,
+    tlayout_metric_descr = jmeter_schema$latency,
+    tlayout_args = list(
+        list(table_dump_location = NULL),
+        list(table_dump_location = NULL),
+        list(table_dump_location = NULL)
+    )
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Bytes summary tables
+builder$include("jmeter/report_table_layout", arguments = list(
+    tlayout_type = "group_summary",
+    tlayout_data = current_data,
+    tlayout_slares = slares,
+    tlayout_history = history_obj,
+    tlayout_metric_descr = jmeter_schema$bytes,
+    tlayout_args = list(
+        list(table_dump_location = NULL),
+        list(table_dump_location = NULL),
+        list(table_dump_location = NULL)
+    )
+))
+```
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+# Response codes summary tables
+builder$include("jmeter/tables/report_respcodes", arguments = list(
+    table_data = current_data,
+    table_slas = slares,
+    table_history = history_obj,
+    table_schema_descr = jmeter_schema$respcodes
+))
+```
+
+`r builder$heading(2)` Test status
+
+Test verdict (based on JMeter data only): __`r ifelse(slares$verdict, "Passed", "Failed")`__.

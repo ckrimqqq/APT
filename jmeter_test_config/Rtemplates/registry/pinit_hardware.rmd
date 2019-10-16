@@ -1,0 +1,55 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is initializer script for hardware plugin for default report 
+# (per single test run).
+#
+# It loosly depends on JMeter plugin:
+# - if JMeter plugin was activated (jm data.table defined) hw data
+# will be adjusted to match duration of test.
+
+builder$inject_vars("input_hwpath")
+builder$inject_vars(c("jm", "report.id"), is_file = rep(FALSE, 2))
+
+tryCatch({
+    hw <- read_hw(input_hwpath, jm, param_hw_group)
+    
+    if (is.null(report.id)) {
+        report.id <- .epoch2text(hw$timeStamp[1], param_timezone)
+    }
+    
+    if (is.null(hw)) {
+        apt_logger("WARN: hw is NULL. It usually means that input_hwpath file is not exist.")
+    } else {
+        apt_logger_verbose("Number of hardware samples after file is read: ", nrow(hw))
+    }
+    
+    setRefClass(
+        Class = "HardwareReportSource",
+        fields = list(
+            d = "data.table",
+            alias = "character"
+        ),
+        methods = list(
+            get_groups = function() sort(unique(d$group)),
+            get_group = function(groupname) {
+                new(
+                    "HardwareReportSource", 
+                    d = d[group == groupname], 
+                    alias = groupname
+                )
+            }
+        ),
+        contains = c("AbstractReportSource")
+    )
+    
+    if (is.data.table(hw)) {
+        builder$register_plugin_handler(
+            "hardware", 
+            new("HardwareReportSource", d = hw, alias = "HW")
+        )
+    }
+    
+}, error = function(e) {
+    apt_logger("ERROR: hardware plugin error (this may be a reason for further failures) - ", toString(e))
+})
+```

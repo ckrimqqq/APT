@@ -1,0 +1,14 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Plugin that can extract id from table and append them to dataset.
+#'
+#' Uses the following variables (params are not listed):
+#' @param ptable source table for extracting info.
+#' @param ptable_extractor_column column with ids.
+#' @param ptable_extractor_handler where to save data (must have add_ids function).
+
+if (!is.null(ptable_extractor_handler) && 
+    is.function(ptable_extractor_handler$add_ids)) {
+    ptable_extractor_handler$add_ids(ptable[[ptable_extractor_column]])
+}
+```

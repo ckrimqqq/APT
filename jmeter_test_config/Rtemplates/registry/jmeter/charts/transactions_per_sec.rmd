@@ -1,0 +1,51 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter transactions per seconds chart.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+#' @param chart_prefix chart title prefix (chart specific data will be appended).
+#' @param chart_by metric for data grouping (1 line on plot for each group).
+#' @param chart_total_layer if TRUE include 'Total' group on chart, otherwise
+#' plot groups only.
+
+chart_layers <- list(
+    list(
+        key = chart_by,
+        yaxis = "elapsed"
+    )
+)
+
+if (!is.null(chart_total_layer) && chart_total_layer) {
+    chart_layers <- c(
+        chart_layers,
+        list(
+            list(
+                key = "total",
+                yaxis = "elapsed"
+            )
+        )
+    )
+}
+
+chart(
+    chart_data,
+    chart_timeseries,
+    chart_layers,
+    chartops = c(
+        list(
+            gtitle = paste0(
+                chart_prefix,
+                " hits"
+            ),
+            gxlab = "Time",
+            gylab = "Transactions/sec"
+        ),
+        param_charts_common
+    ),
+    granularity = param_granularity,
+    averaging_foo = length,
+    normalize_metric = TRUE,
+    timezone = param_timezone
+)
+```

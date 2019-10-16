@@ -1,0 +1,35 @@
+
+`r builder$heading(1)` Queries Summary
+
+- Opt. cost is minimum query optimizer cost among all included snapshots.
+- %CPU - CPU Time as a percentage of Elapsed Time.
+- %IO - User I/O Time as a percentage of Elapsed Time.
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+#' Oracle plugin helper table printer fragment for trend report.
+#'
+#' Uses the following variables (params are not listed):
+#' @param report_data oracle data for target table.
+#' @param report_slares sla results storage.
+
+report_for_print <- report_data[, list(
+    test.id = test.id,
+    min_cost = min_cost,
+    elapsed = elapsed,
+    elapsed_per_exec = elapsed / ifelse(exec, exec, 1),
+    reads = reads,
+    reads_per_exec  = reads / ifelse(exec, exec, 1),
+    exec = exec,
+    fetch = fetch,
+    perc_cpu = cpu / ifelse(elapsed, elapsed, 1) * 100,
+    perc_io = iowait / ifelse(elapsed, elapsed, 1) * 100
+)]
+
+builder$include("oracle/tables/generic_queries_summary", arguments = list(
+    summary_data = report_for_print,
+    summary_metric = "trend",
+    summary_plugins = NULL,
+    summary_slares = report_slares
+))
+```

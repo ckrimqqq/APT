@@ -1,0 +1,42 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter empirical cumulative distribution
+#' function (ECDF).
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+#' @param chart_prefix chart title prefix (chart specific data will be appended).
+#' @param chart_by metric for data grouping (1 line on plot for each group).
+#' @param chart_mode_latency if TRUE Latency will be used as metric otherwise
+#' elapsed.
+
+.is_latency <- !is.null(chart_mode_latency) && chart_mode_latency
+chart_metric <- ifelse(.is_latency, "Latency", "elapsed")
+chart_metric_name <- paste0(
+    " ",
+    ifelse(.is_latency, "lat. time", "resp. time"),
+    " ecdf"
+)
+
+chart_layers <- list(
+    list(
+        key = chart_by,
+        metric = chart_metric
+    )
+)
+
+chart(
+    jlo_data,
+    chart_ecdfplot,
+    chart_layers,
+    chartops = c(
+        list(
+            gtitle = paste0(chart_prefix, chart_metric_name),
+            gxlab = paste0(chart_metric_name, ", s"),
+            gylab = "Quantile"
+        ),
+        param_charts_common
+    ),
+    x_bins = param_bar_bins
+)
+```

@@ -1,0 +1,40 @@
+
+<span id='`r to_id(current_name)`' />
+
+`r builder$heading(1)` `r paste0("'", current_name, "'")` HTTP Code Trends
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+data_codes <- do.call(history_obj$get_table, as.list(current_data))
+data_slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+
+.xname <- sprintf("HTTP %s", current_name)
+
+# Metrics Summary
+builder$include("jmeter/tables/trend_respcodes", arguments = list(
+    table_data = data_codes,
+    table_slas = data_slares,
+    table_metric = current_name,
+    table_schema_descr = jmeter_schema$bytes
+))
+
+# Ratio Deltas Table
+builder$include("trend/tables/trend_deltas", arguments = list(
+    table_history = history_obj,
+    table_path = current_data,
+    table_metric = "count",
+    table_metric_hr = "Count",
+    table_slas = data_slares,
+    table_bgroup = NULL,
+    table_type = "codes",
+    table_units = "count"
+))
+
+# Performance Chart
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_codes,
+    chart_series = list("count" = "Count"),
+    chart_heading = "HTTP Code Counts",
+    chart_name = paste0(.xname, " counts trend"),
+    chart_unit = "count"
+))
+```

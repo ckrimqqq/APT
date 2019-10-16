@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-Monitors">
+	<include prefixSeparator="-">
+		<fileset dir="ant/Monitors" includes="*.xml" />
+	</include>
+	<target name="-setStart" unless="Monitors.StartTime">
+		<groovy><![CDATA[project.setProperty("Monitors.StartTime",String.valueOf(Math.round((new Date()).getTime()/1000)));]]></groovy>
+	</target>
+	<target name="-setEnd" unless="Monitors.EndTime">
+		<groovy><![CDATA[project.setProperty("Monitors.EndTime",String.valueOf(Math.round((new Date()).getTime()/1000)));]]></groovy>
+	</target>
+	<extension-point name="-setup" extensionOf="-EnginePreRun" depends="-cleanMonitorsOut,-setStart" />
+	<extension-point name="-get" extensionOf="-EnginePostRun" depends="-setEnd,-header" />
+	<target name="-header" if="Monitors.Header.need">
+		<echo message="hostname,metric,params,description,clock,value${line.separator}" file="${Monitors.OutputFile}" />
+	</target>
+	<target name="-defineMonitorsOut" unless="Monitors.OutputFile">
+		<property name="Monitors.OutputFile">${basedir}/hw.data</property>
+	</target>
+	<target name="-cleanMonitorsOut" depends="-defineMonitorsOut">
+		<delete file="${Monitors.OutputFile}" quiet="true" />
+	</target>
+</project>

@@ -1,0 +1,27 @@
+```{r echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter test summary table for trend report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_bgroup name of bgroup for data.
+#' @param table_metric_descr table metric description object (part of jmeter schema).
+
+```
+
+`r builder$heading(1)` `r capitalize(table_metric_descr$name_full)` Summary
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+builder$include("common/tables/generic_summary", arguments = list(
+    summary_table = table_data,
+    summary_class = paste0(table_metric_descr$name_sys, ".summary"),
+    summary_subclass = "trend",
+    summary_bgroup = table_bgroup,
+    summary_slas = table_slas,
+    summary_plugins = NULL,
+    summary_suppress = "group",
+    summary_orderby = "test.id",
+    summary_orderby_desc = FALSE,
+    summary_unit = table_metric_descr$units
+))
+```

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-NewRelic">
+	<target name="-setup" extensionOf="-Monitors-setup" depends="-LoadParameters" if="Hardware.Metrics.NewRelic.properties" />
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters" if="Hardware.Metrics.NewRelic.properties">
+		<groovy>
+		<![CDATA[
+			import java.net.URLEncoder
+			import groovy.json.JsonSlurper
+			import java.text.SimpleDateFormat
+
+			def encoding = 'ascii'
+			def timeFormatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss+00:00")
+			timeFormatter.setTimeZone(TimeZone.getTimeZone("UTC"))
+			
+			def startTime = Long.parseLong(project.getProperty("Monitors.StartTime")) * 1000l
+			def endTime = Long.parseLong(project.getProperty("Monitors.EndTime")) * 1000l
+
+			def startTimeStr = URLEncoder.encode(timeFormatter.format(new Date(startTime)), encoding)
+			def endTimeStr = URLEncoder.encode(timeFormatter.format(new Date(endTime)), encoding)
+			def timeStr = "from=$startTimeStr&to=$endTimeStr"
+			
+			def outputFile = project.getProperty("Monitors.OutputFile")
+			def configLocation = project.getProperty("Hardware.Metrics.NewRelic.SetupFile")
+			
+			def apiKey = project.getProperty("Hardware.Metrics.NewRelic.ApiKey")
+			def newRelicApiHost = project.getProperty("Hardware.Metrics.NewRelic.Host")
+			
+			def connectionTimeout = Integer.parseInt(project.getProperty("Hardware.Metrics.NewRelic.ConnectionTimeout"))
+			def downloadTimeout = Integer.parseInt(project.getProperty("Hardware.Metrics.NewRelic.DownloadTimeout"))
+			
+			def createConnection = { urlString ->
+				def conn = (HttpURLConnection) new URL("${newRelicApiHost}${urlString}").openConnection()
+				conn.setRequestMethod('GET')
+				conn.setConnectTimeout(connectionTimeout)
+				conn.setReadTimeout(downloadTimeout)
+				conn.setRequestProperty('X-Api-Key', apiKey)
+				conn.setRequestProperty('Accept', '*/*')
+				conn
+			}
+			
+			def convertToCsv = { metricsJson, groupName, metricNames, hostName, divide ->
+				metricsJson.metric_data.metrics.collect { metric ->
+					def name = metricNames[metric.name]
+					metric.timeslices.collect { slice ->
+						def point = timeFormatter.parse(slice.from).getTime() / 1000  // msec -> sec
+						slice.values.collect { valueName, valueCount ->
+							def metricName = "$name $valueName"
+							valueCount /= divide
+							"\"$hostName\",\"$metricName\",\"$groupName[]\",,$point,$valueCount"
+						}
+					}
+				}.flatten().join('\n')
+			}
+			
+			// shortest common path prefix finder
+			def lcp(arr, defaultName='/') {
+				tmparr = arr.collect { it.split('/') }
+				prefix = null
+				maxOffset = 0
+				tmparr.each { comp ->
+					if (prefix == null) {
+						prefix = comp
+						maxOffset = prefix.size()
+					} else {
+						for (def i = 0; i < maxOffset; i++) {
+							if (comp[i] != prefix[i]) {
+								maxOffset = i;
+								break;
+							}
+						}
+					}
+				}
+			
+				if (maxOffset > 0) {
+					prefix = prefix[0..maxOffset - 1].join('/')
+					index = 0
+					tmparr = tmparr.collectEntries {
+						total = it.join('/')
+						if (maxOffset == it.size()) {
+							index++
+							return [total, "$index"]
+						}
+						[total, it[maxOffset..it.size() - 1].join('/')]
+					}
+					return new Tuple(prefix, tmparr)
+				}
+			
+				return new Tuple(defaultName, tmparr.collectEntries { total = it.join('/'); [total, total] })
+			}
+			
+			def downloadFromUrl = { lookup, domain, time, entry ->
+				def slurp = new JsonSlurper()
+				def metrics = entry.metrics.collect { "names[]=${URLEncoder.encode(it, encoding)}" }.join("&")
+				def values = entry.values.collect { "values[]=${URLEncoder.encode(it, encoding)}" }.join("&")
+				def summarize = "summarize=$entry.summarize"
+				def file = "$metrics&$values&$summarize&$time"
+				def groupName = '/'
+				def metricNames = entry.metrics.collectEntries {[it, it]}
+				def divide = 1
+
+				if (entry.group_name == null) {
+					def names = lcp(entry.metrics)
+					groupName = names[0]
+					metricNames = names[1]
+				} else {
+					groupName = entry.group_name
+				}
+				
+				if (entry.divide != null) {
+					def by = (entry.divide.unit == null) ? 1 : entry.divide.unit
+					def pow = (entry.divide.power == null) ? 1 : entry.divide.power
+					divide = by ** pow
+					divide = divide ?: 1
+				}
+
+				entry.names.collect { name ->
+					def lname = lookup[name] != null ? lookup[name] : name
+					def res = null
+
+					try {
+						def conn = createConnection("/v2/$domain/$lname/metrics/data.json?$file")
+						res = slurp.parse(conn.getInputStream())
+						conn.disconnect()
+						return convertToCsv(res, groupName, metricNames, name, divide)
+					} catch (IOException exc) {
+						System.err.println("Error: " + exc.getMessage())
+					}
+
+					return null
+				}.findAll { it != null }.join('\n')
+			}
+			
+			def configJson = new JsonSlurper().parseText(new File(configLocation).text)
+
+			def nameMap = configJson.names
+			def callWrapper = { appDomain, entry ->
+				downloadFromUrl(nameMap, appDomain, timeStr, entry)
+			}
+
+			def servers = configJson.servers.collect { callWrapper('servers', it) }
+			def applications = configJson.applications.collect { callWrapper('applications', it) }
+			
+			def outputName = project.getProperty("Monitors.OutputFile");
+			for (def entry : [servers, applications].flatten()) {
+				ant.echo(
+					file : outputName,
+					append : true,
+					message : entry + project.getProperty("line.separator")
+				)
+			}
+		]]>
+		</groovy>
+	</target>
+	<target name="-LoadParameters" if="Hardware.Metrics.NewRelic.properties">
+		<property file="${Hardware.Metrics.NewRelic.properties}" />
+		<property name="Monitors.Header.need" value="true" />
+	</target>
+</project>

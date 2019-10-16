@@ -1,0 +1,93 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# JMeter plugin initializer script for trend report (for historical data).
+#
+# It assumes that historical data has been already read and reuses it to
+# provide custom AbstractReportSource implementation for handler.
+
+builder$inject_vars("history_obj", is_file = FALSE)
+
+setRefClass(
+    Class = "JMeterTrendSource",
+    fields = list(
+        ho = "HistoryData",
+        d = "list",
+        alias = "character"
+    ),
+    methods = list(
+        initialize = function(schema, hist_object = NULL, pd = NULL, palias = "") {
+            if (!is.null(hist_object)) {
+                ho <<- hist_object
+            }
+            if (is.null(pd)) {
+                d <<- list(
+                    path = schema$elapsed$name_hist,
+                    lt = schema$latency$name_hist,
+                    bytes = schema$bytes$name_hist
+                )
+            } else {
+                d <<- pd
+            }
+            alias <<- palias
+        },
+        get_summary = function() {
+            if (ho$is_active(c("Summary", "JMeter", "Test"))) {
+                reportResTuple(
+                    ho$get_table("Summary", "JMeter", "Test"), 
+                    alias
+                )
+            } else {
+                NULL
+            }
+        },
+        get_half_sorted = function(sorted, raw, decr = FALSE) {
+            sorted_ok <- intersect(sorted, raw)
+            unsorted <- setdiff(raw, sorted_ok)
+            c(sorted_ok, sort(unsorted, decreasing = decr))
+        },
+        get_groups = function() {
+            get_half_sorted("Total", ho$get_names(d$path))
+        },
+        get_group = function(groupname) {
+            new(
+                "JMeterTrendSource",
+                hist_object = ho,
+                pd = list(
+                    path = c(d$path, groupname),
+                    lt = c(d$lt, groupname),
+                    bytes = c(d$bytes, groupname)
+                ),
+                palias = groupname
+            )
+        },
+        get_elements = function() {
+            get_half_sorted("Total", ho$get_names(d$path))
+        },
+        get_element = function(elemname) {
+            new(
+                "JMeterTrendSource",
+                hist_object = ho,
+                pd = list(
+                    path = c(d$path, elemname),
+                    lt = c(d$lt, elemname),
+                    bytes = c(d$bytes, elemname)
+                ),
+                palias = elemname
+            )
+        }
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj) && history_obj$is_active("Elapsed")) {
+    builder$register_plugin_handler(
+        "jmeter-trend",
+        new(
+            "JMeterTrendSource",
+            schema = jmeter_schema,
+            hist_object = history_obj, 
+            palias = "JMeter"
+        )
+    )
+}
+```

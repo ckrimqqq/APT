@@ -1,0 +1,33 @@
+
+`r builder$heading(1)` Utilization over Time
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes hardware utilization chart.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data hardware data.table for charting
+#' @param chart_name chart title prefix (chart specific data will be appended)
+
+chart(
+    chart_data,
+    chart_timeseries,
+    list(
+        list(
+            key = c("hostname", "metric"),
+            yaxis = "value"
+        )
+    ),
+    timezone = param_timezone,
+    chartops = c(
+        list(
+            gtitle = paste0(chart_name, " utilization chart"),
+            gxlab = "Time",
+            gylab = "units"
+        ),
+        param_charts_common
+    ),
+    granularity = param_granularity,
+    averaging_foo = mean
+)
+```

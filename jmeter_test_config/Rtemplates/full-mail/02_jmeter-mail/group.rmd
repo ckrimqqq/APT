@@ -1,0 +1,61 @@
+
+`r builder$heading(1)` Total Trends
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+data_elapsed <- do.call(history_obj$get_table, as.list(current_data))
+data_slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+current_group <- "Total"
+.xname <- "Grand Total"
+
+# Response Time Summary
+builder$include("jmeter/tables/trend_summary", arguments = list(
+    table_data = data_elapsed,
+    table_slas = data_slares,
+    table_metric_descr = jmeter_schema$elapsed,
+    table_bgroup = current_group
+))
+
+# Average, 90 % Response Time Deltas Table
+for (pack in list(list("avg", "Average RT"), list("p90", "90 % RT"))) {
+    builder$include("trend/tables/trend_deltas", arguments = list(
+        table_history = history_obj,
+        table_path = current_data,
+        table_metric = pack[[1]],
+        table_metric_hr = pack[[2]],
+        table_slas = data_slares,
+        table_bgroup = current_group,
+        table_type = "elapsed",
+        table_units = "sec"
+    ))
+}
+
+# SLA status Table
+builder$include("trend/tables/sla_summary", arguments = list(
+    table_sla = data_slares,
+    table_verdicts = history_obj$get_verdicts_table()[test.id %in% data_elapsed$test.id]
+))
+
+builder$include("trend/charts/mail", arguments = list(
+    chart_data = data_elapsed,
+    chart_series = list(
+        "avg" = "Average", 
+        "median" = "50 %",
+        "p90" = "90 %"
+    ),
+    chart_name = paste(.xname, jmeter_schema$elapsed$name_full, sep = " "),
+    chart_unit = "sec",
+    chart_chunkname = "art"
+), use.expand = TRUE)
+
+builder$include("trend/charts/mail", arguments = list(
+    chart_data = data_elapsed,
+    chart_series = list(
+        "passed" = "Passed",
+        "failed" = "Failed",
+        "total" = "Total"
+    ),
+    chart_name = paste0(.xname, " statuses"),
+    chart_unit = "Count",
+    chart_chunkname = "status"
+), use.expand = TRUE)
+```

@@ -1,0 +1,21 @@
+`r builder$heading(1)` Test description
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter test description table for trend report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_schema jmeter schema object.
+
+builder$include("jmeter/tables/generic_description", arguments = list(
+    description_data = table_data,
+    description_slas = table_slas,
+    description_transpose = FALSE,
+    description_sort = TRUE,
+    description_plugins = NULL,
+    description_orderby = "test.id",
+    description_orderby_desc = FALSE,
+    description_schema = table_schema
+))
+```

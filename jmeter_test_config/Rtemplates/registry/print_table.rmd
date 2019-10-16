@@ -1,0 +1,54 @@
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Report fragment that validates SLA against the table and prints it. 
+#'
+#' Uses the following variables (params are not listed):
+#' @param ptable table to print.
+#' @param ptable_sla_class table id for sla lookup.
+#' @param ptable_sla_subclass name of table. SLA validation results will be saved to "${ptable_sla_class}.${ptable_sla_subclass}".
+#' @param ptable_bgroup_col column name of business groups data or NULL or business group value.
+#' @param ptable_html_args list of arguments to print_table (table, sla matrix and float digits will be added automatically).
+#' @param ptable_slares SLA validation results container
+#' @param ptable_plugins list where names are plugin names and values are lists with plugin configuration.
+
+# table id for sla lookup
+.ptable_id <- if (is.null(ptable_sla_subclass)) {
+  ptable_sla_class
+} else {
+  paste(ptable_sla_class, ptable_sla_subclass, sep = ".")
+}
+
+if (!is.null(ptable_bgroup_col)) {
+  ptable_bgroup_col <- if (ptable_bgroup_col %in% names(ptable)) {
+    ptable[[ptable_bgroup_col]]
+  } else {
+    rep(ptable_bgroup_col, nrow(ptable))
+  }
+}
+
+for (.ptable_plugin_name in names(ptable_plugins)) {
+  builder$include(
+    .ptable_plugin_name, 
+    ptable_plugins[[.ptable_plugin_name]],
+    plugin.owner = "print_table"
+  )
+}
+
+# validate sla
+ptable_slares$check(
+  ptable,
+  tbl_id = .ptable_id,
+  class_id = ptable_sla_class,
+  business_groups = ptable_bgroup_col
+)
+
+# actually print the table
+do.call(print_table, c(
+  list(
+    ptable,
+    sla_m = ptable_slares$result_for(.ptable_id),
+    float_digits = param_digits
+  ),
+  ptable_html_args
+))
+```

@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="-dstat">
+	<target name="-setup" extensionOf="-Monitors-setup" depends="-LoadParameters" if="Hardware.Metrics.dstat.properties">
+		<groovy>
+		<![CDATA[
+			import com.jcraft.jsch.ChannelExec;
+			import com.jcraft.jsch.JSch;
+			import com.jcraft.jsch.JSchException;
+			import com.jcraft.jsch.Session;
+			import java.util.ArrayList;
+			import java.util.List;
+			import java.util.concurrent.Callable;
+			import java.util.concurrent.ExecutionException;
+			import java.util.concurrent.ExecutorService;
+			import java.util.concurrent.Executors;
+			import java.util.concurrent.Future;
+
+			List<Future<String>> treadList = new ArrayList<Future<String>>();
+			ExecutorService es = Executors.newFixedThreadPool(4);
+			for (String alias:project.getProperty("Hardware.Metrics.dstat.Hosts").split(",")){
+				alias = alias.trim();
+				if (alias.isEmpty()) continue;
+				String prefix = "Hardware.Metrics.dstat." + alias;
+				final String hostname = project.getProperty(prefix + ".HostName");
+				final Integer portnum = 22;
+				final String username = project.getProperty(prefix + ".UserName");
+				final String keyfile = project.getProperty(prefix + ".PrivateKey");
+				final String keypass = project.getProperty(prefix + ".PrivateKeyPassphrase")?:"";
+				final String filename = project.getProperty(prefix + ".FileName");
+				final String command = project.getProperty(prefix + ".Command")?:"dstat -T -dngypmf -c -C total";
+				final String interval = project.getProperty(prefix + ".Command.Interval")?:"60";
+				treadList.add(es.submit(new Callable<String>() {
+					@Override
+					public String call() throws Exception {
+						StringBuilder ret = new StringBuilder();
+						JSch jsch=new JSch();
+						Session session = null;
+						try {
+							jsch.setKnownHosts(project.getProperty("user.home") + "/.ssh/known_hosts");
+							jsch.addIdentity(keyfile, keypass);
+							session = jsch.getSession(username, hostname, portnum);
+							session.connect();
+							ChannelExec channel = null;
+							try {
+								channel = (ChannelExec)session.openChannel("exec");
+								//check PID file
+								channel.setCommand((new StringBuilder())
+									.append("OUTFILE=\"").append(filename).append("\"; "
+									+ "PIDFILE=\"\${OUTFILE}.pid\"; ( "
+									+ "test -f \"\${PIDFILE}\" && "
+									+ "test \$(ps --pid \"\$(head -1 \"\${PIDFILE}\")\" -o command= | grep -c 'python[[:space:]]\\+\\S*/dstat[[:space:]]\\+') -ne 0 && "
+									+ "test \$(find \"/proc/\$(head -1 \"\${PIDFILE}\")/fd/\" -lname \"*\" -exec readlink -m {} \\; | grep -c \"^\$(readlink -m \"\${OUTFILE}\")\$\") -ne 0 ) || ( "
+									+ "rm -f \"\${OUTFILE}\"; "
+									+ "nohup ").append(command).append(" --output \"\${OUTFILE}\" ").append(interval).append(" >& /dev/null & echo \$! > \"\${PIDFILE}\"; "
+									+ "exit 101 )").toString());
+								channel.connect();
+								while(!channel.isClosed()){
+									try {
+										Thread.sleep(1000);
+									} catch (InterruptedException ex) {
+										ret.append("InterruptedException\n" + ex.getMessage());
+									}
+								}
+								if (channel.getExitStatus()==101){
+									ret.append("dstat has started on " + hostname);
+								}else{
+									ret.append("dstat has already been started on " + hostname + ", skipped");
+								}
+							} finally {
+								if (channel != null) channel.disconnect();
+							}
+						} catch (JSchException ex) {
+							ret.append("(JSchException\n" + ex.getMessage());
+						} finally {
+							if (session != null) session.disconnect();
+							return ret.toString();
+						}
+					}
+				}));
+			}
+			for (Future<String> f:treadList){
+				try {
+					String s = f.get(); //Ensure all thread are executed
+					if (s.length()>0) ant.echo(s);
+				} catch (InterruptedException ex) {
+					ant.echo("InterruptedException\n" + ex.getMessage());
+				} catch (ExecutionException ex) {
+					ant.echo("ExecutionException\n" + ex.getMessage());
+				}
+			}
+			es.shutdown();
+		]]>
+		</groovy>
+	</target>
+	<target name="-get" extensionOf="-Monitors-get" depends="-LoadParameters" if="Hardware.Metrics.dstat.properties">
+		<groovy>
+		<![CDATA[
+			import com.jcraft.jsch.ChannelExec;
+			import com.jcraft.jsch.JSch;
+			import com.jcraft.jsch.JSchException;
+			import com.jcraft.jsch.Session;
+			import java.io.BufferedReader;
+			import java.io.BufferedWriter;
+			import java.io.FileWriter;
+			import java.io.IOException;
+			import java.io.InputStream;
+			import java.io.InputStreamReader;
+			import java.io.OutputStream;
+			import java.io.PrintWriter;
+			import java.util.ArrayList;
+			import java.util.List;
+			import java.util.concurrent.Callable;
+			import java.util.concurrent.ExecutionException;
+			import java.util.concurrent.ExecutorService;
+			import java.util.concurrent.Executors;
+			import java.util.concurrent.Future;
+
+			class Data {
+				private long lineNumber;
+				private BufferedReader br;
+				private final PrintWriter pw;
+				private String hostName;
+				private String[] groupName;
+				private String[] metricName;
+				private final List<String> metricHeader;
+				private final String newLine;
+
+				public Data(PrintWriter pw) {
+					this(pw, "\n");
+				}
+
+				public Data(PrintWriter pw, String newLine) {
+					this.lineNumber = 0;
+					this.pw = pw;
+					this.metricHeader = new ArrayList<String>();
+					this.newLine = newLine;
+				}
+
+				public boolean processLine() throws IOException{
+					String line = br.readLine();
+					if (line == null) return false;
+					lineNumber++;
+					// process line
+					if (lineNumber < 8) {
+						// Skip "Dstat x.x.x CSV output" header
+						// Skip Author header
+						if (lineNumber == 3){
+							// Getting hostname
+							hostName = line.split(",")[1];
+						}else if (lineNumber == 6) {
+							// Skip Cmdline
+							// Skip empty string
+							// Parsing Metric groups
+							groupName = line.split(",",-1);
+						}else if (lineNumber == 7) {
+							// Parsing Metric names
+							metricName = line.split(",",-1);
+							// Parsing headers
+							if (groupName.length == metricName.length) {
+								String grp = "";
+								for (int i = 0; i < groupName.length; i++) {
+									grp = groupName[i].isEmpty()?grp:unescapeCSV(groupName[i]);
+									metricHeader.add(String.format("\"%1\$s \$1\",\"%1\$s[%2\$s]\",\"%3\$s\"",
+										grp,
+										unescapeCSV(metricName[i]),
+										""));
+								}
+							}
+						}
+					}else{
+						if (metricHeader.size()>0) {
+							String[] data = line.split(",");
+							StringBuilder sb = new StringBuilder();
+							for(int j=1; j < data.length; j++) {
+								sb.append(hostName).append(',')
+									.append(metricHeader.get(j)).append(',')
+									.append(data[0]).append(',')
+									.append(data[j]).append(newLine);
+							}
+							pw.print(sb.toString());
+						}
+					}
+					return true;
+				}
+
+				private String unescapeCSV(String str) {
+					if (str != null && str.length()>1 && str.startsWith("\"") && str.endsWith("\"")) {
+						str.replaceAll("\"\"","\"");
+						str = str.substring(1, str.length()-1);
+					}
+					return str;
+				}
+
+				private void setSource(BufferedReader br) {
+					this.br = br;
+				}
+			}
+
+			class BoundedInputStreamReader extends InputStreamReader{
+				private long remainToRead = -1;
+
+				public BoundedInputStreamReader(InputStream instr, long size) {
+					super(instr);
+					remainToRead = size;
+				}
+
+				@Override
+				public int read() throws IOException {
+					if (remainToRead > 0) {
+						remainToRead--;
+					} else if (remainToRead == 0) return -1;
+					return super.read();
+				}
+
+				public long remains() {
+					return remainToRead;
+				}
+
+				@Override
+				public int read(char[] cbuf, int offset, int length) throws IOException {
+					if (remainToRead == 0) return -1;
+					int read;
+					if (remainToRead < 0) {
+						read = super.read(cbuf, offset, length);
+					} else {
+						read = super.read(cbuf, offset, (int)Math.min(remainToRead, length));
+						remainToRead -= read;
+					}
+					return read;
+				}	
+			}
+
+			PrintWriter pw = null;
+			try {
+				pw = new PrintWriter(new BufferedWriter(new FileWriter(project.getProperty("Monitors.OutputFile"), true)));
+				List<Future<String>> treadList = new ArrayList<Future<String>>();
+				ExecutorService es = Executors.newFixedThreadPool(4);
+				for (String alias:project.getProperty("Hardware.Metrics.dstat.Hosts").split(",")){
+					alias = alias.trim();
+					if (alias.isEmpty()) continue;
+					String prefix = "Hardware.Metrics.dstat." + alias;
+					final String hostname = project.getProperty(prefix + ".HostName");
+					final Integer portnum = 22;
+					final String username = project.getProperty(prefix + ".UserName");
+					final String keyfile = project.getProperty(prefix + ".PrivateKey");
+					final String keypass = project.getProperty(prefix + ".PrivateKeyPassphrase")?:"";
+					final String filename = project.getProperty(prefix + ".FileName");
+					final Data dstat = new Data(pw);
+					treadList.add(es.submit(new Callable() {
+						@Override
+						public String call() throws Exception {
+							StringBuilder ret = new StringBuilder()
+							JSch jsch=new JSch();
+							Session session = null;
+							try {
+								jsch.setKnownHosts(project.getProperty("user.home") + "/.ssh/known_hosts");
+								jsch.addIdentity(keyfile, keypass);
+								session = jsch.getSession(username, hostname, portnum);
+								//session.setConfig("StrictHostKeyChecking", "no"); //development
+								session.connect();
+								ChannelExec channel = null;
+								try {
+									channel = (ChannelExec)session.openChannel("exec");
+									// stop dstat, get data and remove files
+									channel.setCommand((new StringBuilder())
+										.append("OUTFILE=\"").append(filename).append("\"; "
+										+ "PIDFILE=\"\${OUTFILE}.pid\"; ( "
+										+ "test -f \"\${PIDFILE}\" && "
+										+ "test \$(ps --pid \"\$(head -1 \"\${PIDFILE}\")\" -o command= | grep -c 'python[[:space:]]\\+\\S*/dstat[[:space:]]\\+') -ne 0 && "
+										+ "test \$(find \"/proc/\$(head -1 \"\${PIDFILE}\")/fd/\" -lname \"*\" -exec readlink -m {} \\; | grep -c \"^\$(readlink -m \"\${OUTFILE}\")\$\") -ne 0 &&"
+										+ "kill -9 \"\$(head -1 \"\${PIDFILE}\")\") ; ( "
+										+ "test -f \"\${OUTFILE}\" || echo > \"\${OUTFILE}\" ) ; "
+										+ "scp -f \"\${OUTFILE}\"; "
+										+ "rm -f \"\${OUTFILE}\"; "
+										+ "rm -f \"\${PIDFILE}\"").toString());
+									OutputStream outstr = channel.getOutputStream();
+									InputStream instr = channel.getInputStream();
+									channel.connect();
+									outstr.write(0); outstr.flush(); // send - OK
+									if(instr.read() != 'C') throw new IOException("Unexpected scp mode."); // single file mode scp is expected
+									instr.read(new byte[5]); // skip file mode + [space]
+									// getting file size
+									long filesize=0;
+									for(int s = instr.read(); s != ' '; s = instr.read()){
+										if(s < 0) throw new IOException("Unexpected end of stream (file size).");
+										filesize=filesize*10 + (long)(s - (int)'0');
+									}
+									for(int s = instr.read(); s != '\n'; s = instr.read()){ // skip filename
+										if(s < 0) throw new IOException("Unexpected end of stream (file name).");
+									}
+									outstr.write(0); outstr.flush(); // send - OK
+									BoundedInputStreamReader bisr = new BoundedInputStreamReader(instr, filesize);
+									dstat.setSource(new BufferedReader(bisr));
+									while (dstat.processLine()); // process dstat data
+									if (bisr.remains()>0) throw new IOException("Unexpected end of stream (file transfer).");
+									outstr.write(0); outstr.flush(); // send - OK
+								} catch (IOException ex) {
+									ret.append("IOException\n" + ex.getMessage());
+								} finally {
+									if (channel != null) channel.disconnect();
+								}
+							} catch (JSchException ex) {
+								ret.append("JSchException\n" + ex.getMessage());
+							} finally {
+								if (session != null) session.disconnect();
+								return ret.toString();
+							}
+						}
+					}));
+				}
+				for (Future<String> f:treadList){
+					try {
+						String s = f.get(); //Ensure all thread are executed
+						if (s.length()>0) ant.echo(s);
+					} catch (InterruptedException ex) {
+						ant.echo("InterruptedException\n" + ex.getMessage());
+					} catch (ExecutionException ex) {
+						ant.echo("ExecutionException\n" + ex.getMessage());
+					}
+				}
+				es.shutdown();
+			} catch (IOException ex) {
+				ant.echo("IOException\n" + ex.getMessage());
+			} finally {
+				if (pw!=null) pw.close();
+			}
+		]]>
+		</groovy>
+	</target>
+	<target name="-LoadParameters" if="Hardware.Metrics.dstat.properties">
+		<property file="${Hardware.Metrics.dstat.properties}" />
+		<property name="Monitors.Header.need" value="true" />
+	</target>
+</project>

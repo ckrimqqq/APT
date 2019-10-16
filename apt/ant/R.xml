@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="R">
+	<target name="-CheckAnalyzer">
+		<condition property="Test.Analyzer.R">
+			<and>
+				<equals arg1="${Test.Analyzer}" arg2="R" casesensitive="false" trim="true" />
+				<isset property="Test.Result.FileName" />
+			</and>
+		</condition>
+	</target>
+	<target name="-CreateRReports" extensionOf="-AnalyzerRun" depends="-CheckAnalyzer" if="Test.Analyzer.R">
+		<groovy>
+		<![CDATA[
+			boolean reportSucceeded = true;
+			for(String report : project.getProperty("R.Report.toCompile").split(",")) {
+				ant.echo(message : project.getProperty("R.Report." + report));
+				ant.exec(executable : "Rscript",
+						failonerror : false,
+						resultproperty : "R.Report.Result." + report){
+					ant.arg(line : "../Rengine/greport.R " + project.getProperty("R.Report." + report));
+				};
+				reportSucceeded = reportSucceeded && project.getProperty("R.Report.Result." + report).equals("0");
+			}
+			if (!reportSucceeded) {
+				ant.fail(message : "Report compilation failed!");
+			}
+		]]>
+		</groovy>
+	</target>
+</project>

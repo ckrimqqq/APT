@@ -1,0 +1,33 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter running users over time chart.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+
+chart(
+    chart_data,
+    chart_timeseries,
+    list(
+        list(
+            key = "machine",
+            yaxis = "allThreads"
+        ),
+        list(
+            key = "total",
+            yaxis = "totalThreads"
+        )
+    ),
+    timezone = param_timezone,
+    chartops = c(
+        list(
+            gtitle = "Users over time",
+            gxlab = "Time",
+            gylab = "Users"
+        ),
+        param_charts_common
+    ),
+    granularity = param_granularity,
+    averaging_foo = stat_mode
+)
+```

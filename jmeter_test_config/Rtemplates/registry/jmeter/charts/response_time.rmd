@@ -1,0 +1,59 @@
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width = 12, fig.height = 5}
+
+#' Report fragment that describes JMeter response time over time chart.
+#'
+#' Uses the following variables (params are not listed):
+#' @param chart_data JMeter data.table for charting.
+#' @param chart_prefix chart title prefix (chart specific data will be appended).
+#' @param chart_by metric for data grouping (1 line on plot for each group).
+#' @param chart_mode_latency if TRUE Latency will be used as metric otherwise
+#' elapsed.
+#' @param chart_total_layer if TRUE include 'Total' group on chart, otherwise
+#' plot groups only.
+
+.is_latency <- !is.null(chart_mode_latency) && chart_mode_latency
+chart_metric <- ifelse(.is_latency, "Latency", "elapsed")
+chart_metric_name <- paste0(
+    " avg. ",
+    ifelse(.is_latency, "lat. time", "resp. time")
+)
+
+chart_layers <- list(
+    list(
+        key = chart_by,
+        yaxis = chart_metric
+    )
+)
+
+if (!is.null(chart_total_layer) && chart_total_layer) {
+    chart_layers <- c(
+        chart_layers,
+        list(
+            list(
+                key = "total",
+                yaxis = chart_metric
+            )
+        )
+    )
+}
+
+chart(
+    chart_data,
+    chart_timeseries,
+    chart_layers,
+    chartops = c(
+        list(
+            gtitle = paste0(
+                chart_prefix,
+                chart_metric_name
+            ),
+            gxlab = "Time",
+            gylab = "sec"
+        ),
+        param_charts_common
+    ),
+    granularity = param_granularity,
+    averaging_foo = mean,
+    timezone = param_timezone
+)
+```

@@ -1,0 +1,52 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# JMeter plugin initializer script for mail report (for historical data).
+#
+# It assumes that historical data has been already read and reuses it to
+# provide custom AbstractReportSource implementation for handler.
+
+setRefClass(
+    Class = "JMeterMailSource",
+    fields = list(
+        ho = "HistoryData",
+        d = "character",
+        alias = "character",
+        path_summ = "character"
+    ),
+    methods = list(
+        get_summary = function() reportResTuple(d, alias),
+        get_groups = function() {
+            if (ho$is_active(c("Elapsed", "Total", "Total"))) {
+                "Total"
+            } else {
+                NULL
+            }
+        },
+        get_group = function(groupname) {
+            if (!is.null(groupname) && groupname == "Total") {
+                new(
+                    "JMeterMailSource",
+                    ho = ho, 
+                    d = c("Elapsed", "Total", "Total"), 
+                    alias = "Total",
+                    path_summ = path_summ
+                )
+            }
+        }
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj) && history_obj$is_active("Elapsed")) {
+    builder$register_plugin_handler(
+        "jmeter-mail",
+        new(
+            "JMeterMailSource",
+            ho = history_obj, 
+            d = "Elapsed", 
+            alias = "JMeter",
+            path_summ = c("Summary", "JMeter", "Test")
+        )
+    )
+}
+```

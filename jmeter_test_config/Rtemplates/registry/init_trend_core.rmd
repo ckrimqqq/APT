@@ -1,0 +1,56 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is initializer script for trend & mail reports 
+# (for aggregated data).
+#
+# It doesn't make any assumptions what plugins were activated and 
+# just provides historical data storage and list of activated test ids.
+#
+# Plugin provides central SLA and historical data storages.
+#
+# NOTE: This plugin provides a handler.
+
+deps$set_template("resources/template.html")
+
+builder$inject_vars("input_rundata")
+
+hist_migrator <- create_migrator(
+    business_groups = param_business_group$groups,
+    group_missing = param_business_group$group_missing,
+    tzinfo = param_timezone
+)
+
+history_obj <- new(
+    "HistoryData",
+    pfilename = input_rundata,
+    tzone = param_timezone,
+    spec = param_trend_tests,
+    migrator = hist_migrator
+)
+
+slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+
+setRefClass(
+    Class = "TrendSource",
+    fields = list(
+        d = "HistoryData",
+        alias = "character"
+    ),
+    methods = list(
+        get_summary = function() {
+            list(
+                d = d$get_verdicts_table(param_logical_names),
+                alias = alias
+            )
+        }
+    ),
+    contains = c("AbstractReportSource")
+)
+
+if (!is.null(history_obj)) {
+    builder$register_plugin_handler(
+        init_plugin_name, 
+        new("TrendSource", d = history_obj, alias = "General")
+    )
+}
+```

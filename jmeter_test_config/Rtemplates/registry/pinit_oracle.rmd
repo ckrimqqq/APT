@@ -1,0 +1,73 @@
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+
+# This is initializer script for oracle plugin for default report 
+# (per single test run).
+#
+# It loosly depends on JMeter plugin:
+# - if JMeter plugin was activated (jm data.table defined) oracle meta
+# data will not contain VCS information.
+
+builder$inject_vars(c("input_sqlmeta", "input_sqldata"))
+builder$inject_vars(c("jm", "report.id"), is_file = rep(FALSE, 2))
+
+deps$add_scripts("resources/js/highlight.pack.js")
+deps$add_styles("resources/css/highlight.css")
+
+reader_args <- list(input_sqlmeta, tzone = param_timezone)
+
+if (is.null(jm)) {
+    reader_args$vcs.url <- Sys.getenv(param_env_vcs_url)
+    reader_args$vcs.rev <- Sys.getenv(param_env_vcs_rev)
+}
+
+tryCatch({
+    sqlmeta <- do.call(read_sqlmeta, reader_args)
+    sqldata <- read_sqldata(input_sqldata)
+    
+    if (is.null(report.id)) {
+        report.id <- sqlmeta$test.begin
+    }
+    
+    if (is.null(sqldata)) {
+        apt_logger("WARN: sqldata is NULL. It usually means that input_sqldata file is not exists.")
+    } else {
+        apt_logger_verbose("Number of recorded SQL queries after file is read: ", nrow(sqldata))
+    }
+    
+    SQLReportSource <- setRefClass(
+        Class = "SQLReportSource",
+        fields = list(
+            d = "data.table",
+            meta = "data.table",
+            alias = "character",
+            show_ids = "character"
+        ),
+        methods = list(
+            get_summary = function() reportResTuple(d, alias),
+            get_groups = function() show_ids,
+            get_group = function(groupname) {
+                new(
+                    "SQLReportSource", 
+                    d = d[id == groupname],
+                    alias = groupname,
+                    show_ids = show_ids
+                )
+            },
+            add_ids = function(ids) {
+                show_ids <<- union(show_ids, ids)
+            }
+        ),
+        contains = c("AbstractReportSource")
+    )
+    
+    if (is.data.frame(sqldata)) {
+        builder$register_plugin_handler(
+            "oracle", 
+            new("SQLReportSource", d = sqldata, meta = sqlmeta, alias = "SQL")
+        )
+    }
+    
+}, error = function(e) {
+    apt_logger("ERROR: Oracle plugin error (this may be a reason for further failures) - ", toString(e))
+})
+```

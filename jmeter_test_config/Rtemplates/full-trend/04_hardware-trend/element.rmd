@@ -1,0 +1,44 @@
+
+<span id='`r to_id(current_name)`' />
+
+`r builder$heading(1)` `r paste0("'", current_name, "'")` Metric Trends
+
+```{r results='asis', message=FALSE, echo=FALSE, warning=FALSE}
+data_hw <- do.call(history_obj$get_table, as.list(current_data))
+data_slares <- new("SLAResults", verdict = TRUE, slas = param_sla)
+
+.xname <- sprintf("%s (%s)", current_name, current_group)
+
+# Metrics Summary
+builder$include("hardware/tables/trend_summary", arguments = list(
+    table_data = data_hw,
+    table_slas = data_slares,
+    table_metric = current_name,
+    table_group = current_group
+))
+
+# Median Time Deltas Table
+builder$include("trend/tables/trend_deltas", arguments = list(
+    table_history = history_obj,
+    table_path = current_data,
+    table_metric = "median",
+    table_metric_hr = "Median Utilization",
+    table_slas = data_slares,
+    table_bgroup = NULL,
+    table_type = "hardware",
+    table_units = "units"
+))
+
+# Performance Chart
+builder$include("trend/charts/basic", arguments = list(
+    chart_data = data_hw,
+    chart_series = list(
+        "avg" = "Average",
+        "median" = "50 %",
+        "p90" = "90 %"
+    ),
+    chart_heading = paste0("Utilization Trend"),
+    chart_name = paste0(.xname, " utilization trend"),
+    chart_unit = "units"
+))
+```

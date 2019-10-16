@@ -1,0 +1,6 @@
+
+`r builder$heading(1)` '`r current_name`' Hardware Metrics Group
+
+```{r message=FALSE, echo=FALSE, warning=FALSE}
+current_group <- current_name
+```

@@ -1,0 +1,35 @@
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter response codes summary table for generic
+#' context: trend or report.
+#' 
+#' @param respcodes_data data for table.
+#' @param respcodes_slas SLA results storage object.
+#' @param respcodes_plugins list of printer plugin settings.
+#' @param respcodes_orderby character name of table column for row ordering.
+#' @param respcodes_orderby_desc logical flag specifying direction of sorting.
+#' TRUE for descending, i.e. from highest to lowest.
+#' @param respcodes_schema_descr jmeter schema object.
+
+builder$include("print_table", arguments = list(
+    ptable = respcodes_data,
+    ptable_sla_class = "report.respcodes",
+    ptable_sla_subclass = NULL,
+    ptable_bgroup_col = NULL,
+    ptable_html_args = list(
+        sortable = TRUE,
+        order_by = respcodes_orderby,
+        order_desc = respcodes_orderby_desc,
+        col_names = list(
+            test.id = "Test ID",
+            name = capitalize(respcodes_schema_descr$name_full),
+            group = NA,
+            count = "Count",
+            ratio = "Ratio"
+        )
+    ),
+    ptable_slares = respcodes_slas,
+    ptable_plugins = respcodes_plugins
+))
+```

@@ -1,0 +1,30 @@
+`r builder$heading(1)` `r capitalize(table_schema_descr$name_full)`
+
+```{r results='asis', echo=FALSE, warning=FALSE, error=FALSE, message=FALSE}
+
+#' Fragment that describes JMeter response codes summary table for regular report.
+#' 
+#' @param table_data data for table.
+#' @param table_slas SLA results storage object.
+#' @param table_history historical data storage object.
+#' @param table_schema_descr jmeter schema object.
+
+builder$include("jmeter/tables/generic_respcodes", arguments = list(
+    respcodes_data = frequency_summary(
+        table_data,
+        group_key = table_schema_descr$name_sys,
+        stat_col = "elapsed"
+    ),
+    respcodes_slas = table_slas,
+    respcodes_plugins = list(
+        history = list(
+            ptable_history_obj = table_history,
+            ptable_history_loc = c(table_schema_descr$name_hist, "All", "name"),
+            ptable_history_excludes = NULL
+        )
+    ),
+    respcodes_orderby = "count",
+    respcodes_orderby_desc = TRUE,
+    respcodes_schema_descr = table_schema_descr
+))
+```
